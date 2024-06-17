@@ -37,7 +37,7 @@ if (isset($_POST['add_meal'])) {
         }
     }
 
-    $sql = "INSERT INTO meals (name, description, malady_id, category_id, price, stock, image, created_at, updated_at) VALUES ('$name', '$description', '$malady_id', '$category_id', '$price', '$stock', '$image', NOW(), NOW())";
+    $sql = "INSERT INTO meals (name, description, malady_id, category, price, stock, image, created_at, updated_at) VALUES ('$name', '$description', '$malady_id', '$category_id', '$price', '$stock', '$image', NOW(), NOW())";
     $conn->query($sql);
     header("Location: meals.php");
 }
@@ -65,17 +65,28 @@ if (isset($_POST['edit_meal'])) {
         }
     }
 
-    $sql = "UPDATE meals SET name='$name', description='$description', malady_id='$malady_id', category_id='$category_id', price='$price', stock='$stock', image='$image', updated_at=NOW() WHERE meal_id='$meal_id'";
+    $sql = "UPDATE meals SET name='$name', description='$description', malady_id='$malady_id', category='$category_id', price='$price', stock='$stock', image='$image', updated_at=NOW() WHERE meal_id='$meal_id'";
     $conn->query($sql);
     header("Location: meals.php");
 }
 
 // Handle Delete Meal
+$delete_error = "";
 if (isset($_GET['delete_meal'])) {
     $meal_id = $_GET['delete_meal'];
-    $sql = "DELETE FROM meals WHERE meal_id='$meal_id'";
-    $conn->query($sql);
-    header("Location: meals.php");
+
+    // Check for related orders
+    $related_orders_query = "SELECT COUNT(*) AS count FROM orders WHERE meal_id='$meal_id'";
+    $related_orders_result = $conn->query($related_orders_query);
+    $related_orders_count = $related_orders_result->fetch_assoc()['count'];
+
+    if ($related_orders_count > 0) {
+        $delete_error = "Cannot delete meal. There are orders associated with this meal.";
+    } else {
+        $sql = "DELETE FROM meals WHERE meal_id='$meal_id'";
+        $conn->query($sql);
+        header("Location: meals.php");
+    }
 }
 
 // Handle bulk delete action
@@ -83,9 +94,22 @@ if (isset($_POST['delete_selected'])) {
     $selected_meals = $_POST['selected_meals'];
     if (!empty($selected_meals)) {
         $ids = implode(',', $selected_meals);
-        $sql = "DELETE FROM meals WHERE meal_id IN ($ids)";
-        $conn->query($sql);
-        header("Location: meals.php");
+
+        // Check for related orders
+        $related_orders_query = "SELECT meal_id FROM orders WHERE meal_id IN ($ids)";
+        $related_orders_result = $conn->query($related_orders_query);
+        $related_meals = [];
+        while ($row = $related_orders_result->fetch_assoc()) {
+            $related_meals[] = $row['meal_id'];
+        }
+
+        if (!empty($related_meals)) {
+            $delete_error = "Cannot delete meals. There are orders associated with these meals.";
+        } else {
+            $sql = "DELETE FROM meals WHERE meal_id IN ($ids)";
+            $conn->query($sql);
+            header("Location: meals.php");
+        }
     }
 }
 
@@ -102,10 +126,10 @@ $start = ($page - 1) * $limit;
 // Fetch meals data with pagination, malady filter, and category filter
 $search_sql = $search_query ? "WHERE (meals.name LIKE '%$search_query%' OR meals.description LIKE '%$search_query%')" : "WHERE 1";
 $malady_sql = $malady_filter ? "AND meals.malady_id='$malady_filter'" : "";
-$category_sql = $category_filter ? "AND meals.category_id='$category_filter'" : "";
+$category_sql = $category_filter ? "AND meals.category='$category_filter'" : "";
 $sql = "SELECT meals.*, maladies.name AS malady_name, categories.name AS category_name FROM meals 
         LEFT JOIN maladies ON meals.malady_id=maladies.malady_id 
-        LEFT JOIN categories ON meals.category_id=categories.category_id 
+        LEFT JOIN categories ON meals.category=categories.category_id 
         $search_sql $malady_sql $category_sql 
         LIMIT $start, $limit";
 $result = $conn->query($sql);
@@ -224,6 +248,10 @@ $total_pages = ceil($total_meals / $limit);
         <div class="container mt-5">
             <h1><i class="fas fa-utensils"></i> Manage Meals</h1>
 
+            <?php if ($delete_error): ?>
+                <div class="alert alert-danger"><?php echo $delete_error; ?></div>
+            <?php endif; ?>
+
             <!-- Add Category Button -->
             <a href="add_category.php" class="btn btn-secondary mb-3"><i class="fas fa-plus"></i> Add New Category</a>
 
@@ -319,7 +347,7 @@ $total_pages = ceil($total_meals / $limit);
                 <table class="table table-bordered">
                     <thead class="thead-light">
                         <tr>
-                            <th><input type="checkbox" id="selectAll"></th>
+                            <!-- <th><input type="checkbox" id="selectAll"></th> -->
                             <th>Meal ID</th>
                             <th>Name</th>
                             <th>Description</th>
@@ -336,7 +364,7 @@ $total_pages = ceil($total_meals / $limit);
                     <tbody>
                         <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
-                                <td><input type="checkbox" name="selected_meals[]" value="<?php echo $row['meal_id']; ?>"></td>
+                                <!-- <td><input type="checkbox" name="selected_meals[]" value="<?php echo $row['meal_id']; ?>"></td> -->
                                 <td><?php echo $row['meal_id']; ?></td>
                                 <td><?php echo $row['name']; ?></td>
                                 <td><?php echo $row['description']; ?></td>
@@ -349,13 +377,13 @@ $total_pages = ceil($total_meals / $limit);
                                 <td><?php echo $row['updated_at']; ?></td>
                                 <td>
                                     <!-- View Meal Button -->
-                                    <button class="btn btn-sm btn-info" data-toggle="modal" data-target="#viewMealModal<?php echo $row['meal_id']; ?>"><i class="fas fa-eye"></i> View</button>
+                                    <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#viewMealModal<?php echo $row['meal_id']; ?>"><i class="fas fa-eye"></i> View</button>
 
                                     <!-- Edit Meal Button -->
-                                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editMealModal<?php echo $row['meal_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
+                                    <button type="button" class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editMealModal<?php echo $row['meal_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
 
                                     <!-- Delete Meal Link -->
-                                    <a href="meals.php?delete_meal=<?php echo $row['meal_id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</a>
+                                    <a href="meals.php?delete_meal=<?php echo $row['meal_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this meal?');"><i class="fas fa-trash"></i> Delete</a>
                                 </td>
                             </tr>
 
@@ -452,7 +480,7 @@ $total_pages = ceil($total_meals / $limit);
                         <?php endwhile; ?>
                     </tbody>
                 </table>
-                <button type="submit" name="delete_selected" class="btn btn-danger"><i class="fas fa-trash"></i> Delete Selected</button>
+                <!-- <button type="submit" name="delete_selected" class="btn btn-danger"><i class="fas fa-trash"></i> Delete Selected</button> -->
             </form>
 
             <!-- Pagination Controls -->

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:8889
--- Generation Time: Jun 15, 2024 at 09:30 PM
+-- Generation Time: Jun 17, 2024 at 11:55 PM
 -- Server version: 5.7.39
 -- PHP Version: 8.2.0
 
@@ -52,6 +52,15 @@ CREATE TABLE `addresses` (
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+--
+-- Dumping data for table `addresses`
+--
+
+INSERT INTO `addresses` (`address_id`, `user_id`, `street`, `city`, `state`, `zip_code`, `country`, `created_at`, `updated_at`) VALUES
+(2, 2, 'sidi maarouf', 'casablanca', 'Morocco', '20700', 'Morocco', '2024-06-16 19:55:31', '2024-06-16 19:55:31'),
+(3, 102, 'nil', 'casablanca', 'casablanca', '20700', 'Morocco', '2024-06-16 20:09:07', '2024-06-16 20:09:07'),
+(4, NULL, 'nil', 'casablanca', 'morocco', '20700', 'Morocco', '2024-06-16 23:04:13', '2024-06-16 23:04:13');
+
 -- --------------------------------------------------------
 
 --
@@ -72,7 +81,7 @@ CREATE TABLE `admins` (
 --
 
 INSERT INTO `admins` (`admin_id`, `name`, `email`, `password`, `created_at`, `updated_at`) VALUES
-(1, 'zouhair', 'zouhair@gmail.com', 'zouhair', '2024-06-14 17:13:08', '2024-06-14 17:16:11');
+(1, 'zouhair', 'zouhair@gmail.com', 'zouhair', '2024-06-14 17:13:08', '2024-06-17 00:56:45');
 
 -- --------------------------------------------------------
 
@@ -90,7 +99,9 @@ CREATE TABLE `categories` (
 --
 
 INSERT INTO `categories` (`category_id`, `name`) VALUES
-(1, 'chicken ');
+(1, 'chicken '),
+(2, 'meet'),
+(3, 'salade');
 
 -- --------------------------------------------------------
 
@@ -112,7 +123,8 @@ CREATE TABLE `coupons` (
 --
 
 INSERT INTO `coupons` (`coupon_id`, `code`, `discount_percentage`, `expiry_date`, `created_at`, `updated_at`) VALUES
-(1, 'zr', '50.00', '2024-06-16', '2024-06-14 17:59:41', '2024-06-14 17:59:41');
+(1, 'zr', '90.00', '2024-06-16', '2024-06-14 17:59:41', '2024-06-15 22:55:33'),
+(2, 'km', '24.00', '2024-06-23', '2024-06-16 00:04:20', '2024-06-16 00:04:20');
 
 -- --------------------------------------------------------
 
@@ -166,6 +178,61 @@ INSERT INTO `delivery_personnel` (`id`, `name`, `email`, `phone`, `role`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `delivery_routes`
+--
+
+CREATE TABLE `delivery_routes` (
+  `route_id` int(11) NOT NULL,
+  `route_name` varchar(255) NOT NULL,
+  `delivery_person_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `delivery_routes`
+--
+
+INSERT INTO `delivery_routes` (`route_id`, `route_name`, `delivery_person_id`, `created_at`) VALUES
+(1, 'alfa-oulfa', 1, '2024-06-17 23:45:11');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `feedback`
+--
+
+CREATE TABLE `feedback` (
+  `feedback_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `message` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `feedback`
+--
+
+INSERT INTO `feedback` (`feedback_id`, `user_id`, `message`, `created_at`) VALUES
+(1, 103, 'hello there', '2024-06-16 23:53:11');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inventory`
+--
+
+CREATE TABLE `inventory` (
+  `item_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `description` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `maladies`
 --
 
@@ -182,7 +249,7 @@ CREATE TABLE `maladies` (
 --
 
 INSERT INTO `maladies` (`malady_id`, `name`, `description`, `created_at`, `updated_at`) VALUES
-(1, 'diabetes', 'diabest ', '2024-06-14 18:27:23', '2024-06-14 18:27:23'),
+(1, 'diabetes', 'diabest ee', '2024-06-14 18:27:23', '2024-06-15 22:36:35'),
 (2, 'obesity', 'obesity', '2024-06-14 23:13:01', '2024-06-14 23:13:01'),
 (3, 'Diabetes', 'A group of diseases that result in too much sugar in the blood.', '2024-06-15 19:14:25', '2024-06-15 19:14:25'),
 (4, 'Hypertension', 'A condition in which the force of the blood against the artery walls is too high.', '2024-06-15 19:14:25', '2024-06-15 19:14:25'),
@@ -204,20 +271,19 @@ CREATE TABLE `meals` (
   `image` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `category_id` int(11) DEFAULT NULL
+  `category_id` int(11) DEFAULT NULL,
+  `stock` int(11) NOT NULL DEFAULT '0',
+  `category` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `meals`
 --
 
-INSERT INTO `meals` (`meal_id`, `name`, `description`, `malady_id`, `price`, `image`, `created_at`, `updated_at`, `category_id`) VALUES
-(1, 'chiken', 'healthy chicken', 1, '200.00', 'uploads/images-3.jpeg', '2024-06-14 23:17:05', '2024-06-14 23:17:05', NULL),
-(7, 'Grilled Chicken Salad', 'Healthy grilled chicken salad', 1, '10.99', NULL, '2024-06-15 19:14:37', '2024-06-15 19:14:37', NULL),
-(8, 'Vegan Buddha Bowl', 'Nourishing vegan buddha bowl', 2, '12.99', NULL, '2024-06-15 19:14:37', '2024-06-15 19:14:37', NULL),
-(9, 'Quinoa and Black Bean Salad', 'Protein-packed quinoa and black bean salad', 3, '8.99', NULL, '2024-06-15 19:14:37', '2024-06-15 19:14:37', NULL),
-(10, 'Salmon and Avocado Salad', 'Omega-3 rich salmon and avocado salad', 4, '14.99', NULL, '2024-06-15 19:14:37', '2024-06-15 19:14:37', NULL),
-(11, 'Chicken Caesar Salad', 'Classic chicken caesar salad', 1, '9.99', NULL, '2024-06-15 19:14:37', '2024-06-15 19:14:37', NULL);
+INSERT INTO `meals` (`meal_id`, `name`, `description`, `malady_id`, `price`, `image`, `created_at`, `updated_at`, `category_id`, `stock`, `category`) VALUES
+(1, 'chiken', 'healthy chicken', 1, '200.00', 'uploads/images-3.jpeg', '2024-06-14 23:17:05', '2024-06-14 23:17:05', NULL, 0, ''),
+(102, 'Vegetarian Pizza', 'A delicious vegetarian pizza.', NULL, '12.99', NULL, '2024-01-01 11:00:00', '2024-01-01 11:00:00', NULL, 0, ''),
+(105, 'healthy salads ', 'healthy salads  for losing weight', 2, '100.00', 'uploads/Beige and Black Minimalist Skincare Logo.png', '2024-06-17 22:28:09', '2024-06-17 23:17:19', NULL, 8, '2');
 
 -- --------------------------------------------------------
 
@@ -252,6 +318,7 @@ CREATE TABLE `orders` (
   `order_id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT NULL,
   `meal_id` int(11) DEFAULT NULL,
+  `quantity` int(11) NOT NULL,
   `address_id` int(11) DEFAULT NULL,
   `coupon_id` int(11) DEFAULT NULL,
   `status` varchar(50) DEFAULT NULL,
@@ -266,10 +333,11 @@ CREATE TABLE `orders` (
 -- Dumping data for table `orders`
 --
 
-INSERT INTO `orders` (`order_id`, `user_id`, `meal_id`, `address_id`, `coupon_id`, `status`, `total`, `created_at`, `updated_at`, `payment_method`, `discount_amount`) VALUES
-(2, 1, NULL, NULL, 1, 'health salad', '5000.00', '2024-06-14 18:03:05', '2024-06-14 18:03:05', 'Cash on Delivery', '0.00'),
-(3, 2, NULL, NULL, 1, 'happy meal', '1000.00', '2024-06-14 18:11:22', '2024-06-14 18:11:22', 'Cash on Delivery', '0.00'),
-(4, 2, NULL, NULL, 1, 'health salade', '3000.00', '2024-06-14 18:21:48', '2024-06-14 18:21:48', 'Cash on Delivery', '3000.00');
+INSERT INTO `orders` (`order_id`, `user_id`, `meal_id`, `quantity`, `address_id`, `coupon_id`, `status`, `total`, `created_at`, `updated_at`, `payment_method`, `discount_amount`) VALUES
+(2, 1, 1, 11, NULL, 1, 'health salad', '5000.00', '2024-06-14 18:03:05', '2024-06-17 00:25:06', 'Cash on Delivery', '0.00'),
+(3, 2, NULL, 0, NULL, 1, 'happy meal', '1000.00', '2024-06-14 18:11:22', '2024-06-14 18:11:22', 'Cash on Delivery', '0.00'),
+(4, 2, NULL, 0, NULL, 1, 'health salade', '3000.00', '2024-06-14 18:21:48', '2024-06-14 18:21:48', 'Cash on Delivery', '3000.00'),
+(23, 101, 105, 2, NULL, NULL, 'test', '200.00', '2024-06-17 23:17:19', '2024-06-17 23:17:19', 'Cash on Delivery', '0.00');
 
 -- --------------------------------------------------------
 
@@ -291,7 +359,8 @@ CREATE TABLE `payments` (
 --
 
 INSERT INTO `payments` (`payment_id`, `order_id`, `payment_method`, `status`, `created_at`, `updated_at`) VALUES
-(1, 3, 'Cash on Delivery', 'test', '2024-06-14 23:34:56', '2024-06-14 23:34:56');
+(1, 3, 'Cash on Delivery', 'test', '2024-06-14 23:34:56', '2024-06-14 23:34:56'),
+(2, 2, 'Cash on Delivery', 'Pending', '2024-06-17 22:57:47', '2024-06-17 22:57:47');
 
 -- --------------------------------------------------------
 
@@ -305,6 +374,21 @@ CREATE TABLE `payment_history` (
   `old_status` varchar(50) DEFAULT NULL,
   `new_status` varchar(50) DEFAULT NULL,
   `change_date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `support_tickets`
+--
+
+CREATE TABLE `support_tickets` (
+  `ticket_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `subject` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `status` varchar(50) NOT NULL DEFAULT 'Open',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
@@ -331,7 +415,11 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`user_id`, `name`, `email`, `password`, `malady_id`, `address_id`, `phone`, `created_at`, `updated_at`) VALUES
 (1, 'user', 'user@gmail.com', 'user', NULL, NULL, '0688000980', '2024-06-14 17:52:09', '2024-06-14 17:52:09'),
-(2, 'kawtar', 'kawtar@gmail.com', 'kawtar', NULL, NULL, '047728191', '2024-06-14 17:57:08', '2024-06-14 17:57:08');
+(2, 'kawtar', 'kawtar@gmail.com', 'kawtar', NULL, NULL, '047728191', '2024-06-14 17:57:08', '2024-06-14 17:57:08'),
+(100, 'John Doe', 'john.doe@example.com', NULL, NULL, NULL, '1234567890', '2024-01-01 09:00:00', '2024-06-15 22:21:50'),
+(101, 'Jane Smith', 'jane.smith@example.com', NULL, NULL, NULL, '0987654321', '2024-01-01 10:00:00', '2024-06-15 22:21:50'),
+(102, 'Alice Johnson', 'alice.johnson@example.com', NULL, NULL, NULL, '1122334455', '2024-01-01 11:00:00', '2024-06-15 22:21:50'),
+(103, 'Sara', 'sara@gmail.com', 'sara', 1, 4, '068800439', '2024-06-16 23:04:13', '2024-06-16 23:04:13');
 
 -- --------------------------------------------------------
 
@@ -402,6 +490,26 @@ ALTER TABLE `delivery_personnel`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `delivery_routes`
+--
+ALTER TABLE `delivery_routes`
+  ADD PRIMARY KEY (`route_id`),
+  ADD KEY `delivery_person_id` (`delivery_person_id`);
+
+--
+-- Indexes for table `feedback`
+--
+ALTER TABLE `feedback`
+  ADD PRIMARY KEY (`feedback_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `inventory`
+--
+ALTER TABLE `inventory`
+  ADD PRIMARY KEY (`item_id`);
+
+--
 -- Indexes for table `maladies`
 --
 ALTER TABLE `maladies`
@@ -447,6 +555,12 @@ ALTER TABLE `payment_history`
   ADD KEY `payment_id` (`payment_id`);
 
 --
+-- Indexes for table `support_tickets`
+--
+ALTER TABLE `support_tickets`
+  ADD PRIMARY KEY (`ticket_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -477,7 +591,7 @@ ALTER TABLE `activity_logs`
 -- AUTO_INCREMENT for table `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `address_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `address_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `admins`
@@ -489,13 +603,13 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `category_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `category_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `coupons`
 --
 ALTER TABLE `coupons`
-  MODIFY `coupon_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `coupon_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `deliveries`
@@ -510,6 +624,24 @@ ALTER TABLE `delivery_personnel`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `delivery_routes`
+--
+ALTER TABLE `delivery_routes`
+  MODIFY `route_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `feedback`
+--
+ALTER TABLE `feedback`
+  MODIFY `feedback_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `inventory`
+--
+ALTER TABLE `inventory`
+  MODIFY `item_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `maladies`
 --
 ALTER TABLE `maladies`
@@ -519,7 +651,7 @@ ALTER TABLE `maladies`
 -- AUTO_INCREMENT for table `meals`
 --
 ALTER TABLE `meals`
-  MODIFY `meal_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `meal_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
 
 --
 -- AUTO_INCREMENT for table `notifications`
@@ -531,13 +663,13 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `order_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `payments`
 --
 ALTER TABLE `payments`
-  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `payment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `payment_history`
@@ -546,10 +678,16 @@ ALTER TABLE `payment_history`
   MODIFY `history_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `support_tickets`
+--
+ALTER TABLE `support_tickets`
+  MODIFY `ticket_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=104;
 
 --
 -- AUTO_INCREMENT for table `user_notifications`
@@ -566,6 +704,18 @@ ALTER TABLE `user_notifications`
 --
 ALTER TABLE `deliveries`
   ADD CONSTRAINT `deliveries_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`);
+
+--
+-- Constraints for table `delivery_routes`
+--
+ALTER TABLE `delivery_routes`
+  ADD CONSTRAINT `delivery_routes_ibfk_1` FOREIGN KEY (`delivery_person_id`) REFERENCES `delivery_personnel` (`id`);
+
+--
+-- Constraints for table `feedback`
+--
+ALTER TABLE `feedback`
+  ADD CONSTRAINT `feedback_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`);
 
 --
 -- Constraints for table `meals`

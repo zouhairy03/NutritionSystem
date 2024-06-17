@@ -19,9 +19,27 @@ if (isset($_POST['add_order'])) {
     $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
-    $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', NOW(), NOW())";
-    $conn->query($sql);
-    header("Location: orders.php");
+    // Start transaction
+    $conn->begin_transaction();
+
+    try {
+        // Insert order
+        $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', NOW(), NOW())";
+        $conn->query($sql);
+
+        // Update stock
+        $updateStockSql = "UPDATE meals SET stock = stock - $quantity WHERE meal_id = '$meal_id'";
+        $conn->query($updateStockSql);
+
+        // Commit transaction
+        $conn->commit();
+        
+        header("Location: orders.php");
+    } catch (Exception $e) {
+        // Rollback transaction if something goes wrong
+        $conn->rollback();
+        echo "Failed to add order: " . $e->getMessage();
+    }
 }
 
 // Handle Edit Order
@@ -293,7 +311,9 @@ $result = $conn->query($sql);
                     <div class="form-group">
                         <label for="user_id">User:</label>
                         <select class="form-control" id="user_id" name="user_id" required>
-                            <?php while ($user = $usersResult->fetch_assoc()): ?>
+                            <?php
+                            $usersResult->data_seek(0); // Reset the pointer to the beginning
+                            while ($user = $usersResult->fetch_assoc()): ?>
                                 <option value="<?php echo $user['user_id']; ?>"><?php echo $user['name']; ?></option>
                             <?php endwhile; ?>
                         </select>
@@ -301,7 +321,9 @@ $result = $conn->query($sql);
                     <div class="form-group">
                         <label for="meal_id">Meal:</label>
                         <select class="form-control" id="meal_id" name="meal_id" required>
-                            <?php while ($meal = $mealsResult->fetch_assoc()): ?>
+                            <?php
+                            $mealsResult->data_seek(0); // Reset the pointer to the beginning
+                            while ($meal = $mealsResult->fetch_assoc()): ?>
                                 <option value="<?php echo $meal['meal_id']; ?>"><?php echo $meal['name']; ?></option>
                             <?php endwhile; ?>
                         </select>

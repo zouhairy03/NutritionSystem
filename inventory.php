@@ -6,9 +6,21 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require 'config/db.php';
 
-// Fetch meals data
-$sql = "SELECT meal_id, name, stock, category FROM meals ORDER BY name ASC";
-$result = $conn->query($sql);
+// Search and filter parameters
+$search = isset($_GET['search']) ? $_GET['search'] : '';
+$category_filter = isset($_GET['category']) ? $_GET['category'] : '';
+
+// Fetch meals data with category name
+$sql = "SELECT meals.meal_id, meals.name, meals.stock, categories.category_id, categories.name AS category_name 
+        FROM meals 
+        JOIN categories ON meals.category = categories.category_id 
+        WHERE meals.name LIKE ? AND (categories.category_id = ? OR ? = '')
+        ORDER BY meals.name ASC";
+$stmt = $conn->prepare($sql);
+$search_param = "%$search%";
+$stmt->bind_param("sis", $search_param, $category_filter, $category_filter);
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
 
 <!DOCTYPE html>
@@ -74,6 +86,20 @@ $result = $conn->query($sql);
             border-bottom: none;
             border-radius: 15px 15px 0 0;
         }
+        .stock-status {
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: #fff;
+        }
+        .in-stock {
+            background-color: #28a745;
+        }
+        .low-stock {
+            background-color: #ffc107;
+        }
+        .out-of-stock {
+            background-color: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -112,6 +138,31 @@ $result = $conn->query($sql);
         <div class="container mt-5">
             <h1><i class="fas fa-boxes"></i> Inventory Management</h1>
 
+            <!-- Search and Filter Form -->
+            <form method="GET" class="mb-4">
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" name="search" class="form-control" placeholder="Search by name" value="<?php echo htmlspecialchars($search); ?>">
+                    </div>
+                    <div class="col">
+                        <select name="category" class="form-control">
+                            <option value="">All Categories</option>
+                            <?php
+                            $category_sql = "SELECT * FROM categories";
+                            $category_result = $conn->query($category_sql);
+                            while ($category_row = $category_result->fetch_assoc()) {
+                                $selected = $category_row['category_id'] == $category_filter ? 'selected' : '';
+                                echo "<option value=\"{$category_row['category_id']}\" $selected>{$category_row['name']}</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+            </form>
+
             <!-- Inventory Table -->
             <table class="table table-bordered">
                 <thead class="thead-light">
@@ -120,6 +171,7 @@ $result = $conn->query($sql);
                         <th>Name</th>
                         <th>Stock Left</th>
                         <th>Category</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -127,12 +179,64 @@ $result = $conn->query($sql);
                         <tr>
                             <td><?php echo $row['meal_id']; ?></td>
                             <td><?php echo $row['name']; ?></td>
-                            <td><?php echo $row['stock']; ?></td>
-                            <td><?php echo $row['category']; ?></td>
+                            <td>
+                                <?php
+                                $stock = $row['stock'];
+                                $stock_class = $stock > 10 ? 'in-stock' : ($stock > 0 ? 'low-stock' : 'out-of-stock');
+                                ?>
+                                <span class="stock-status <?php echo $stock_class; ?>" id="stock-<?php echo $row['meal_id']; ?>"><?php echo $stock; ?></span>
+                            </td>
+                            <td><?php echo $row['category_name']; ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-warning edit-btn" data-id="<?php echo $row['meal_id']; ?>" data-name="<?php echo $row['name']; ?>" data-stock="<?php echo $row['stock']; ?>" data-category="<?php echo $row['category_id']; ?>">Edit</button>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="<?php echo $row['meal_id']; ?>">Delete</button>
+                            </td>
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="editMealForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editModalLabel">Edit Meal</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="meal_id" id="editMealId">
+                    <div class="form-group">
+                        <label for="editName">Name</label>
+                        <input type="text" class="form-control" name="name" id="editName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editStock">Stock</label>
+                        <input type="number" class="form-control" name="stock" id="editStock" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCategory">Category</label>
+                        <select class="form-control" name="category" id="editCategory" required>
+                            <?php
+                            $category_sql = "SELECT * FROM categories";
+                            $category_result = $conn->query($category_sql);
+                            while ($category_row = $category_result->fetch_assoc()) {
+                                echo "<option value=\"{$category_row['category_id']}\">{$category_row['name']}</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -144,6 +248,59 @@ $result = $conn->query($sql);
     $(document).ready(function () {
         $('#sidebarCollapse').on('click', function () {
             $('#sidebar').toggleClass('active');
+        });
+
+        // Edit button click handler
+        $('.edit-btn').on('click', function () {
+            var mealId = $(this).data('id');
+            var mealName = $(this).data('name');
+            var mealStock = $(this).data('stock');
+            var mealCategory = $(this).data('category');
+
+            $('#editMealId').val(mealId);
+            $('#editName').val(mealName);
+            $('#editStock').val(mealStock);
+            $('#editCategory').val(mealCategory);
+
+            $('#editModal').modal('show');
+        });
+
+        // Delete button click handler
+        $('.delete-btn').on('click', function () {
+            var mealId = $(this).data('id');
+            if (confirm('Are you sure you want to delete this meal?')) {
+                $.ajax({
+                    url: 'delete_meal.php',
+                    method: 'POST',
+                    data: { meal_id: mealId },
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Meal deleted successfully.');
+                            location.reload();
+                        } else {
+                            alert('Failed to delete meal.');
+                        }
+                    }
+                });
+            }
+        });
+
+        // Edit meal form submit handler
+        $('#editMealForm').on('submit', function (e) {
+            e.preventDefault();
+            $.ajax({
+                url: 'update_meal.php',
+                method: 'POST',
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        alert('Meal updated successfully.');
+                        location.reload();
+                    } else {
+                        alert('Failed to update meal.');
+                    }
+                }
+            });
         });
     });
 </script>
