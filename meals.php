@@ -6,6 +6,11 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require 'config/db.php';
 
+// Ensure the uploads directory exists
+if (!file_exists('uploads')) {
+    mkdir('uploads', 0777, true);
+}
+
 // Fetch maladies and categories for the dropdown
 $maladiesResult = $conn->query("SELECT malady_id, name FROM maladies");
 $categoriesResult = $conn->query("SELECT category_id, name FROM categories");
@@ -17,16 +22,22 @@ if (isset($_POST['add_meal'])) {
     $malady_id = $_POST['malady_id'];
     $category_id = $_POST['category_id'];
     $price = $_POST['price'];
+    $stock = $_POST['stock']; // Add stock
     $image = '';
 
     // Handle image upload
     if (!empty($_FILES['image']['name'])) {
         $target_dir = "uploads/";
         $image = $target_dir . basename($_FILES["image"]["name"]);
-        move_uploaded_file($_FILES["image"]["tmp_name"], $image);
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $image)) {
+            // File uploaded successfully
+        } else {
+            // Error uploading file
+            echo "Error uploading the file.";
+        }
     }
 
-    $sql = "INSERT INTO meals (name, description, malady_id, category_id, price, image, created_at, updated_at) VALUES ('$name', '$description', '$malady_id', '$category_id', '$price', '$image', NOW(), NOW())";
+    $sql = "INSERT INTO meals (name, description, malady_id, category_id, price, stock, image, created_at, updated_at) VALUES ('$name', '$description', '$malady_id', '$category_id', '$price', '$stock', '$image', NOW(), NOW())";
     $conn->query($sql);
     header("Location: meals.php");
 }
@@ -39,16 +50,22 @@ if (isset($_POST['edit_meal'])) {
     $malady_id = $_POST['malady_id'];
     $category_id = $_POST['category_id'];
     $price = $_POST['price'];
+    $stock = $_POST['stock']; // Add stock
     $image = $_POST['existing_image'];
 
     // Handle image upload
     if (!empty($_FILES['image']['name'])) {
         $target_dir = "uploads/";
         $image = $target_dir . basename($_FILES["image"]["name"]);
-        move_uploaded_file($_FILES["image"]["tmp_name"], $image);
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $image)) {
+            // File uploaded successfully
+        } else {
+            // Error uploading file
+            echo "Error uploading the file.";
+        }
     }
 
-    $sql = "UPDATE meals SET name='$name', description='$description', malady_id='$malady_id', category_id='$category_id', price='$price', image='$image', updated_at=NOW() WHERE meal_id='$meal_id'";
+    $sql = "UPDATE meals SET name='$name', description='$description', malady_id='$malady_id', category_id='$category_id', price='$price', stock='$stock', image='$image', updated_at=NOW() WHERE meal_id='$meal_id'";
     $conn->query($sql);
     header("Location: meals.php");
 }
@@ -134,10 +151,6 @@ $total_pages = ceil($total_meals / $limit);
         }
         #sidebar ul.components {
             padding: 20px 0;
-        }
-        #sidebar ul p {
-            color: #fff;
-            padding: 10px;
         }
         #sidebar ul li a {
             padding: 10px;
@@ -287,6 +300,10 @@ $total_pages = ceil($total_meals / $limit);
                     <input type="number" step="0.01" class="form-control" id="price" name="price" required>
                 </div>
                 <div class="form-group">
+                    <label for="stock">Stock:</label> <!-- Add stock field -->
+                    <input type="number" class="form-control" id="stock" name="stock" required>
+                </div>
+                <div class="form-group">
                     <label for="image">Image:</label>
                     <input type="file" class="form-control" id="image" name="image" onchange="previewImage(event)">
                     <img id="imagePreview" src="#" alt="Image Preview" style="display:none; width: 100px; margin-top: 10px;">
@@ -309,6 +326,7 @@ $total_pages = ceil($total_meals / $limit);
                             <th>Malady</th>
                             <th>Category</th>
                             <th>Price</th>
+                            <th>Stock</th> <!-- Add stock column -->
                             <th>Image</th>
                             <th>Created At</th>
                             <th>Updated At</th>
@@ -325,6 +343,7 @@ $total_pages = ceil($total_meals / $limit);
                                 <td><?php echo $row['malady_name']; ?></td>
                                 <td><?php echo $row['category_name']; ?></td>
                                 <td><?php echo $row['price']; ?></td>
+                                <td><?php echo $row['stock']; ?></td> <!-- Display stock -->
                                 <td><?php if ($row['image']): ?><img src="<?php echo $row['image']; ?>" alt="<?php echo $row['name']; ?>" style="width: 100px;"><?php endif; ?></td>
                                 <td><?php echo $row['created_at']; ?></td>
                                 <td><?php echo $row['updated_at']; ?></td>
@@ -356,6 +375,7 @@ $total_pages = ceil($total_meals / $limit);
                                             <p><strong>Category:</strong> <?php echo $row['category_name']; ?></p>
                                             <p><strong>Malady:</strong> <?php echo $row['malady_name']; ?></p>
                                             <p><strong>Price:</strong> <?php echo $row['price']; ?></p>
+                                            <p><strong>Stock:</strong> <?php echo $row['stock']; ?></p> <!-- Display stock -->
                                             <?php if ($row['image']): ?>
                                                 <p><strong>Image:</strong><br><img src="<?php echo $row['image']; ?>" alt="<?php echo $row['name']; ?>" style="width: 100px;"></p>
                                             <?php endif; ?>
@@ -413,6 +433,10 @@ $total_pages = ceil($total_meals / $limit);
                                                 <div class="form-group">
                                                     <label for="price">Price:</label>
                                                     <input type="number" step="0.01" class="form-control" id="price" name="price" value="<?php echo $row['price']; ?>" required>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="stock">Stock:</label> <!-- Add stock field -->
+                                                    <input type="number" class="form-control" id="stock" name="stock" value="<?php echo $row['stock']; ?>" required>
                                                 </div>
                                                 <div class="form-group">
                                                     <label for="image">Image:</label>

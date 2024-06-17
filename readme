@@ -1,6 +1,10 @@
 search for user etc 
 delivery part (done)
-quantity of the meals (stock,none )
-update informations for the admin 
+quantity of the meals (stock,none ) (partly done)
+update informations for the admin (done)
 take a look about all the pages 
 check the responsive design
+instaed of typing per month type per day 
+
+dont forget to fix that error tomorrow (
+Fatal error: Uncaught mysqli_sql_exception: Field 'category' doesn't have a default value in /Applications/MAMP/htdocs/nms/meals.php:41 Stack trace: #0 /Applications/MAMP/htdocs/nms/meals.php(41): mysqli->query('INSERT INTO mea...') #1 {main} thrown in /Applications/MAMP/htdocs/nms/meals.php on line 41

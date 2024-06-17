@@ -20,11 +20,17 @@ $totalMaladies = $conn->query("SELECT COUNT(*) AS count FROM maladies")->fetch_a
 $totalNotifications = $conn->query("SELECT COUNT(*) AS count FROM notifications")->fetch_assoc()['count'];
 $totalMeals = $conn->query("SELECT COUNT(*) AS count FROM meals")->fetch_assoc()['count'];
 $totalPayments = $conn->query("SELECT COUNT(*) AS count FROM payments")->fetch_assoc()['count'];
+$totalAddresses = $conn->query("SELECT COUNT(*) AS count FROM addresses")->fetch_assoc()['count'];
+$totalAdmins = $conn->query("SELECT COUNT(*) AS count FROM admins")->fetch_assoc()['count'];
+$newUsersThisMonth = $conn->query("SELECT COUNT(*) AS count FROM users WHERE MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())")->fetch_assoc()['count'];
 
 // Fetch recent activities
 $recentOrders = $conn->query("SELECT * FROM orders ORDER BY created_at DESC LIMIT 5");
 $recentUsers = $conn->query("SELECT * FROM users ORDER BY created_at DESC LIMIT 5");
 $recentNotifications = $conn->query("SELECT * FROM notifications ORDER BY created_at DESC LIMIT 5");
+$recentActivities = $conn->query("SELECT * FROM activity_logs ORDER BY timestamp DESC LIMIT 5");
+$recentAddresses = $conn->query("SELECT * FROM addresses ORDER BY created_at DESC LIMIT 5");
+$recentAdmins = $conn->query("SELECT * FROM admins ORDER BY created_at DESC LIMIT 5");
 
 // Fetch monthly sales data
 $monthlySalesData = [];
@@ -76,10 +82,6 @@ while ($row = $topMealsQuery->fetch_assoc()) {
         }
         #sidebar ul.components {
             padding: 20px 0;
-        }
-        #sidebar ul p {
-            color: #fff;
-            padding: 10px;
         }
         #sidebar ul li a {
             padding: 10px;
@@ -150,23 +152,32 @@ while ($row = $topMealsQuery->fetch_assoc()) {
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
-        </div>
-        <ul class="list-unstyled components">
-            <li><a href="dashboard.php">Dashboard</a></li>
-            <li><a href="users.php">Users</a></li>
-            <li><a href="orders.php">Orders</a></li>
-            <li><a href="coupons.php">Coupons</a></li>
-            <li><a href="maladies.php">Maladies</a></li>
-            <li><a href="notifications.php">Notifications</a></li>
-            <li><a href="meals.php">Meals</a></li>
-            <li><a href="payments.php">Payments</a></li>
-            <li><a href="deliveries.php">Deliveries</a></li>
-            <li><a href="delivers.php">Deliver Personnel</a></li>
-            <li><a href="logout.php">Logout</a></li>
-        </ul>
-    </nav>
+    <div class="sidebar-header">
+        <h3>Admin Dashboard</h3>
+    </div>
+    <ul class="list-unstyled components">
+        <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+        <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+        <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+        <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+        <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+        <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+        <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+        <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+        <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Deliver Personnel</a></li>
+        <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+        <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+        <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+        <li><a href="meal_plans.php"><i class="fas fa-calendar-alt"></i> Meal Plans</a></li>
+        <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+        <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li>
+        <li><a href="marketing.php"><i class="fas fa-bullhorn"></i> Marketing Campaigns</a></li>
+        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</nav>
+
 
     <!-- Page Content -->
     <div id="content">
@@ -181,7 +192,7 @@ while ($row = $topMealsQuery->fetch_assoc()) {
 
         <div class="container-fluid">
             <div class="welcome-message">
-                <h2>Welcome,  <?php echo $admin_name; ?>!</h2>
+                <h2>Welcome, <?php echo $admin_name; ?>!</h2>
             </div>
 
             <!-- Dashboard Cards -->
@@ -266,6 +277,42 @@ while ($row = $topMealsQuery->fetch_assoc()) {
                         </div>
                     </div>
                 </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="text">
+                                <div class="card-title">Total Addresses</div>
+                                <h2><?php echo $totalAddresses; ?></h2>
+                            </div>
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <div class="text">
+                                <div class="card-title">Total Admins</div>
+                                <h2><?php echo $totalAdmins; ?></h2>
+                            </div>
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <div class="text">
+                                <div class="card-title">New Users This Month</div>
+                                <h2><?php echo $newUsersThisMonth; ?></h2>
+                            </div>
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Performance Metrics -->
@@ -294,21 +341,41 @@ while ($row = $topMealsQuery->fetch_assoc()) {
 
             <!-- Recent Activities -->
             <div class="row">
-                <!-- Recent Orders -->
                 <div class="col-lg-6 mb-4">
                     <div class="card data-section">
                         <div class="card-header">
-                            <i class="fas fa-clock"></i> Recent Orders
+                            <i class="fas fa-list"></i> Recent Activities
                         </div>
                         <div class="card-body">
                             <ul>
-                                <?php while ($order = $recentOrders->fetch_assoc()): ?>
+                                <?php while ($activity = $recentActivities->fetch_assoc()): ?>
                                     <li>
-                                        <strong>Order ID:</strong> <?php echo $order['order_id']; ?><br>
-                                        <strong>User ID:</strong> <?php echo $order['user_id']; ?><br>
-                                        <strong>Total:</strong> $<?php echo $order['total']; ?><br>
-                                        <strong>Status:</strong> <?php echo $order['status']; ?><br>
-                                        <strong>Date:</strong> <?php echo $order['created_at']; ?>
+                                        <strong>User ID:</strong> <?php echo $activity['user_id']; ?><br>
+                                        <strong>Action:</strong> <?php echo $activity['action']; ?><br>
+                                        <strong>Date:</strong> <?php echo $activity['timestamp']; ?>
+                                    </li>
+                                <?php endwhile; ?>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Addresses -->
+            <div class="row">
+                <div class="col-lg-6 mb-4">
+                    <div class="card data-section">
+                        <div class="card-header">
+                            <i class="fas fa-map-marker-alt"></i> Recent Addresses
+                        </div>
+                        <div class="card-body">
+                            <ul>
+                                <?php while ($address = $recentAddresses->fetch_assoc()): ?>
+                                    <li>
+                                        <strong>Address ID:</strong> <?php echo $address['address_id']; ?><br>
+                                        <strong>Street:</strong> <?php echo $address['street']; ?><br>
+                                        <strong>City:</strong> <?php echo $address['city']; ?><br>
+                                        <strong>Date:</strong> <?php echo $address['created_at']; ?>
                                     </li>
                                 <?php endwhile; ?>
                             </ul>
@@ -316,21 +383,20 @@ while ($row = $topMealsQuery->fetch_assoc()) {
                     </div>
                 </div>
 
-                <!-- Recent Users -->
+                <!-- Recent Admins -->
                 <div class="col-lg-6 mb-4">
                     <div class="card data-section">
                         <div class="card-header">
-                            <i class="fas fa-users"></i> Recent Users
+                            <i class="fas fa-user-shield"></i> Recent Admins
                         </div>
                         <div class="card-body">
                             <ul>
-                                <?php while ($user = $recentUsers->fetch_assoc()): ?>
+                                <?php while ($admin = $recentAdmins->fetch_assoc()): ?>
                                     <li>
-                                        <strong>User ID:</strong> <?php echo $user['user_id']; ?><br>
-                                        <strong>Name:</strong> <?php echo $user['name']; ?><br>
-                                        <strong>Email:</strong> <?php echo $user['email']; ?><br>
-                                        <strong>Phone:</strong> <?php echo $user['phone']; ?><br>
-                                        <strong>Joined:</strong> <?php echo $user['created_at']; ?>
+                                        <strong>Admin ID:</strong> <?php echo $admin['admin_id']; ?><br>
+                                        <strong>Name:</strong> <?php echo $admin['name']; ?><br>
+                                        <strong>Email:</strong> <?php echo $admin['email']; ?><br>
+                                        <strong>Joined:</strong> <?php echo $admin['created_at']; ?>
                                     </li>
                                 <?php endwhile; ?>
                             </ul>
@@ -370,6 +436,7 @@ while ($row = $topMealsQuery->fetch_assoc()) {
                             <a href="add_order.php" class="btn btn-success">Add Order</a>
                             <a href="add_coupon.php" class="btn btn-info">Add Coupon</a>
                             <a href="add_meal.php" class="btn btn-secondary">Add Meal</a>
+                            <a href="addresses.php" class="btn btn-warning">Add Address</a>
                         </div>
                     </div>
                 </div>

@@ -6,27 +6,20 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require 'config/db.php';
 
-// Fetch users and coupons for the dropdowns
+// Fetch users and meals for the dropdowns
 $usersResult = $conn->query("SELECT user_id, name FROM users");
-$couponsResult = $conn->query("SELECT coupon_id, code, discount_percentage FROM coupons");
+$mealsResult = $conn->query("SELECT meal_id, name FROM meals");
 
 // Handle Add Order
 if (isset($_POST['add_order'])) {
     $user_id = $_POST['user_id'];
-    $coupon_id = $_POST['coupon_id'] ? $_POST['coupon_id'] : 'NULL';
+    $meal_id = $_POST['meal_id'];
+    $quantity = $_POST['quantity'];
     $status = $_POST['status'];
     $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
-    $discount_amount = 0;
-    if ($coupon_id != 'NULL') {
-        $coupon = $conn->query("SELECT discount_percentage FROM coupons WHERE coupon_id = $coupon_id")->fetch_assoc();
-        $discount = $coupon['discount_percentage'];
-        $discount_amount = $total * ($discount / 100);
-        $total = $total - $discount_amount;
-    }
-
-    $sql = "INSERT INTO orders (user_id, coupon_id, status, total, discount_amount, payment_method, created_at, updated_at) VALUES ('$user_id', $coupon_id, '$status', '$total', '$discount_amount', '$payment_method', NOW(), NOW())";
+    $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', NOW(), NOW())";
     $conn->query($sql);
     header("Location: orders.php");
 }
@@ -35,20 +28,13 @@ if (isset($_POST['add_order'])) {
 if (isset($_POST['edit_order'])) {
     $order_id = $_POST['order_id'];
     $user_id = $_POST['user_id'];
-    $coupon_id = $_POST['coupon_id'] ? $_POST['coupon_id'] : 'NULL';
+    $meal_id = $_POST['meal_id'];
+    $quantity = $_POST['quantity'];
     $status = $_POST['status'];
     $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
-    $discount_amount = 0;
-    if ($coupon_id != 'NULL') {
-        $coupon = $conn->query("SELECT discount_percentage FROM coupons WHERE coupon_id = $coupon_id")->fetch_assoc();
-        $discount = $coupon['discount_percentage'];
-        $discount_amount = $total * ($discount / 100);
-        $total = $total - $discount_amount;
-    }
-
-    $sql = "UPDATE orders SET user_id='$user_id', coupon_id=$coupon_id, status='$status', total='$total', discount_amount='$discount_amount', payment_method='$payment_method', updated_at=NOW() WHERE order_id='$order_id'";
+    $sql = "UPDATE orders SET user_id='$user_id', meal_id='$meal_id', quantity='$quantity', status='$status', total='$total', payment_method='$payment_method', updated_at=NOW() WHERE order_id='$order_id'";
     $conn->query($sql);
     header("Location: orders.php");
 }
@@ -73,10 +59,7 @@ if (isset($_GET['delete_order'])) {
 }
 
 // Fetch orders data
-$sql = "SELECT orders.*, users.name as user_name, coupons.code as coupon_code, coupons.discount_percentage
-        FROM orders
-        LEFT JOIN users ON orders.user_id = users.user_id
-        LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id";
+$sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id";
 $result = $conn->query($sql);
 ?>
 
@@ -114,10 +97,6 @@ $result = $conn->query($sql);
         }
         #sidebar ul.components {
             padding: 20px 0;
-        }
-        #sidebar ul p {
-            color: #fff;
-            padding: 10px;
         }
         #sidebar ul li a {
             padding: 10px;
@@ -204,10 +183,10 @@ $result = $conn->query($sql);
                     <tr>
                         <th>Order ID</th>
                         <th>User Name</th>
-                        <th>Coupon Code</th>
+                        <th>Meal Name</th>
+                        <th>Quantity</th>
                         <th>Status</th>
                         <th>Total</th>
-                        <th>Discount Amount</th>
                         <th>Payment Method</th>
                         <th>Created At</th>
                         <th>Actions</th>
@@ -218,10 +197,10 @@ $result = $conn->query($sql);
                         <tr>
                             <td><?php echo $row['order_id']; ?></td>
                             <td><?php echo $row['user_name']; ?></td>
-                            <td><?php echo $row['coupon_code']; ?></td>
+                            <td><?php echo $row['meal_name']; ?></td>
+                            <td><?php echo $row['quantity']; ?></td>
                             <td><?php echo $row['status']; ?></td>
                             <td><?php echo $row['total']; ?></td>
-                            <td><?php echo $row['discount_amount']; ?></td>
                             <td><?php echo $row['payment_method']; ?></td>
                             <td><?php echo $row['created_at']; ?></td>
                             <td>
@@ -229,10 +208,10 @@ $result = $conn->query($sql);
                                 <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editOrderModal<?php echo $row['order_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
 
                                 <!-- Delete Order Link -->
-                                <a href="orders.php?delete_order=<?php echo $row['order_id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</a>
+                                <a href="orders.php?delete_order=<?php echo $row['order_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?')"><i class="fas fa-trash"></i> Delete</a>
 
                                 <!-- Print Button -->
-                                <button class="btn btn-sm btn-primary" onclick="printOrder(<?php echo $row['order_id']; ?>, '<?php echo $row['user_name']; ?>', '<?php echo $row['coupon_code']; ?>', '<?php echo $row['status']; ?>', '<?php echo $row['total']; ?>', '<?php echo $row['discount_amount']; ?>', '<?php echo $row['payment_method']; ?>', '<?php echo $row['created_at']; ?>')"><i class="fas fa-print"></i> Print</button>
+                                <button class="btn btn-sm btn-primary" onclick="printOrder(<?php echo $row['order_id']; ?>, '<?php echo $row['user_name']; ?>', '<?php echo $row['meal_name']; ?>', '<?php echo $row['quantity']; ?>', '<?php echo $row['status']; ?>', '<?php echo $row['total']; ?>', '<?php echo $row['payment_method']; ?>', '<?php echo $row['created_at']; ?>')"><i class="fas fa-print"></i> Print</button>
                             </td>
                         </tr>
 
@@ -260,15 +239,18 @@ $result = $conn->query($sql);
                                                 </select>
                                             </div>
                                             <div class="form-group">
-                                                <label for="coupon_id">Coupon:</label>
-                                                <select class="form-control" id="coupon_id" name="coupon_id">
-                                                    <option value="">No Coupon</option>
+                                                <label for="meal_id">Meal:</label>
+                                                <select class="form-control" id="meal_id" name="meal_id" required>
                                                     <?php
-                                                    $couponsResult->data_seek(0); // Reset the pointer to the beginning
-                                                    while ($coupon = $couponsResult->fetch_assoc()): ?>
-                                                        <option value="<?php echo $coupon['coupon_id']; ?>" <?php if ($coupon['coupon_id'] == $row['coupon_id']) echo 'selected'; ?>><?php echo $coupon['code']; ?></option>
+                                                    $mealsResult->data_seek(0); // Reset the pointer to the beginning
+                                                    while ($meal = $mealsResult->fetch_assoc()): ?>
+                                                        <option value="<?php echo $meal['meal_id']; ?>" <?php if ($meal['meal_id'] == $row['meal_id']) echo 'selected'; ?>><?php echo $meal['name']; ?></option>
                                                     <?php endwhile; ?>
                                                 </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="quantity">Quantity:</label>
+                                                <input type="number" class="form-control" id="quantity" name="quantity" value="<?php echo $row['quantity']; ?>" required>
                                             </div>
                                             <div class="form-group">
                                                 <label for="status">Status:</label>
@@ -317,13 +299,16 @@ $result = $conn->query($sql);
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="coupon_id">Coupon:</label>
-                        <select class="form-control" id="coupon_id" name="coupon_id">
-                            <option value="">No Coupon</option>
-                            <?php while ($coupon = $couponsResult->fetch_assoc()): ?>
-                                <option value="<?php echo $coupon['coupon_id']; ?>"><?php echo $coupon['code']; ?></option>
+                        <label for="meal_id">Meal:</label>
+                        <select class="form-control" id="meal_id" name="meal_id" required>
+                            <?php while ($meal = $mealsResult->fetch_assoc()): ?>
+                                <option value="<?php echo $meal['meal_id']; ?>"><?php echo $meal['name']; ?></option>
                             <?php endwhile; ?>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity:</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" required>
                     </div>
                     <div class="form-group">
                         <label for="status">Status:</label>
@@ -354,7 +339,7 @@ $result = $conn->query($sql);
         });
     });
 
-    function printOrder(orderId, userName, couponCode, status, total, discountAmount, paymentMethod, createdAt) {
+    function printOrder(orderId, userName, mealName, quantity, status, total, paymentMethod, createdAt) {
         // Open a new window for printing
         var printWindow = window.open('', '_blank');
         printWindow.document.write('<html><head><title>Print Order</title>');
@@ -364,10 +349,10 @@ $result = $conn->query($sql);
         printWindow.document.write('<h1>Order Details</h1>');
         printWindow.document.write('<p><strong>Order ID:</strong> ' + orderId + '</p>');
         printWindow.document.write('<p><strong>User Name:</strong> ' + userName + '</p>');
-        printWindow.document.write('<p><strong>Coupon Code:</strong> ' + couponCode + '</p>');
+        printWindow.document.write('<p><strong>Meal Name:</strong> ' + mealName + '</p>');
+        printWindow.document.write('<p><strong>Quantity:</strong> ' + quantity + '</p>');
         printWindow.document.write('<p><strong>Status:</strong> ' + status + '</p>');
         printWindow.document.write('<p><strong>Total:</strong> ' + total + '</p>');
-        printWindow.document.write('<p><strong>Discount Amount:</strong> ' + discountAmount + '</p>');
         printWindow.document.write('<p><strong>Payment Method:</strong> ' + paymentMethod + '</p>');
         printWindow.document.write('<p><strong>Created At:</strong> ' + createdAt + '</p>');
         printWindow.document.write('</div>');
