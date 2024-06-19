@@ -438,9 +438,9 @@ while ($row = $topMealsQuery->fetch_assoc()) {
                             <i class="fas fa-bolt"></i> Quick Actions
                         </div>
                         <div class="card-body quick-actions">
-                            <a href="add_user.php" class="btn btn-primary">Add User</a>
+                            <a href="users.php" class="btn btn-primary">Add User</a>
                             <a href="orders.php" class="btn btn-success">Add Order</a>
-                            <a href="add_coupon.php" class="btn btn-info">Add Coupon</a>
+                            <a href="coupons.php" class="btn btn-info">Add Coupon</a>
                             <a href="meals.php" class="btn btn-secondary">Add Meal</a>
                             <a href="addresses.php" class="btn btn-warning">Add Address</a>
                         </div>

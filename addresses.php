@@ -60,7 +60,7 @@ while ($user = $users_query->fetch_assoc()) {
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background:    #809B53 ;
             color: #fff;
             transition: all 0.3s;
         }
@@ -69,7 +69,7 @@ while ($user = $users_query->fetch_assoc()) {
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background:    #809B53 ;
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -81,7 +81,7 @@ while ($user = $users_query->fetch_assoc()) {
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41;
             background: #fff;
         }
         #content {
@@ -163,6 +163,9 @@ while ($user = $users_query->fetch_assoc()) {
                     <i class="fas fa-align-left"></i>
                     <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
 
