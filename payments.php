@@ -7,7 +7,7 @@ if (!isset($_SESSION['admin_id'])) {
 require 'config/db.php';
 
 // Fetch orders for the dropdown
-$ordersResult = $conn->query("SELECT order_id FROM orders");
+$ordersResult = $conn->query("SELECT order_id, users.name AS user_name FROM orders INNER JOIN users ON orders.user_id = users.user_id");
 
 // Handle Add Payment
 if (isset($_POST['add_payment'])) {
@@ -33,7 +33,7 @@ if (isset($_POST['edit_payment'])) {
 
     // Insert into payment history if status changes
     if ($currentStatus != $status) {
-        $conn->query("INSERT INTO payment_history (payment_id, old_status, new_status) VALUES ('$payment_id', '$currentStatus', '$status')");
+        $conn->query("INSERT INTO payment_history (payment_id, old_status, new_status, change_date) VALUES ('$payment_id', '$currentStatus', '$status', NOW())");
         
         // Fetch user email
         $userEmailResult = $conn->query("SELECT email FROM users INNER JOIN orders ON users.user_id=orders.user_id WHERE orders.order_id='$order_id'");
@@ -56,14 +56,14 @@ if (isset($_GET['delete_payment'])) {
     header("Location: payments.php");
 }
 
-// Handle Export to CSV
+// Handle Export to Excel
 if (isset($_POST['export'])) {
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=payments.csv');
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename=payments.xls');
     $output = fopen('php://output', 'w');
-    fputcsv($output, array('Payment ID', 'Order ID', 'Payment Method', 'Status', 'Order Total', 'Created At', 'Updated At'));
+    fputcsv($output, array('Payment ID', 'Order ID', 'User Name', 'Payment Method', 'Status', 'Order Total', 'Created At', 'Updated At'));
 
-    $result = $conn->query("SELECT payments.*, orders.total AS order_total FROM payments LEFT JOIN orders ON payments.order_id=orders.order_id");
+    $result = $conn->query("SELECT payments.*, orders.total AS order_total, users.name AS user_name FROM payments LEFT JOIN orders ON payments.order_id=orders.order_id LEFT JOIN users ON orders.user_id=users.user_id");
     while ($row = $result->fetch_assoc()) {
         fputcsv($output, $row);
     }
@@ -81,16 +81,17 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $start = ($page - 1) * $limit;
 
 // Fetch payments data with pagination and order filter
-$search_sql = $search_query ? "WHERE (payments.payment_method LIKE '%$search_query%' OR payments.status LIKE '%$search_query%')" : "WHERE 1";
+$search_sql = $search_query ? "AND (payments.payment_method LIKE '%$search_query%' OR payments.status LIKE '%$search_query%' OR users.name LIKE '%$search_query%')" : "";
 $order_sql = $order_filter ? "AND payments.order_id='$order_filter'" : "";
-$sql = "SELECT payments.*, orders.total AS order_total FROM payments 
+$sql = "SELECT payments.*, orders.total AS order_total, users.name AS user_name FROM payments 
         LEFT JOIN orders ON payments.order_id=orders.order_id 
-        $search_sql $order_sql 
+        LEFT JOIN users ON orders.user_id=users.user_id
+        WHERE 1 $search_sql $order_sql 
         LIMIT $start, $limit";
 $result = $conn->query($sql);
 
 // Fetch total payments count for pagination
-$sql_count = "SELECT COUNT(*) AS total FROM payments $search_sql $order_sql";
+$sql_count = "SELECT COUNT(*) AS total FROM payments LEFT JOIN orders ON payments.order_id=orders.order_id LEFT JOIN users ON orders.user_id=users.user_id WHERE 1 $search_sql $order_sql";
 $count_result = $conn->query($sql_count);
 $total_payments = $count_result->fetch_assoc()['total'];
 $total_pages = ceil($total_payments / $limit);
@@ -111,6 +112,10 @@ function sendPaymentNotification($email, $status) {
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f8f9fa;
+        }
         .wrapper {
             display: flex;
             width: 100%;
@@ -119,7 +124,7 @@ function sendPaymentNotification($email, $status) {
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background: #809B53; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -128,7 +133,7 @@ function sendPaymentNotification($email, $status) {
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background: #809B53; /* Green color */
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -144,7 +149,7 @@ function sendPaymentNotification($email, $status) {
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -154,16 +159,22 @@ function sendPaymentNotification($email, $status) {
         }
         .card {
             margin-bottom: 20px;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .card i {
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
             cursor: pointer;
+        }
+        .modal .modal-dialog {
+            max-width: 800px;
         }
     </style>
 </head>
@@ -171,23 +182,32 @@ function sendPaymentNotification($email, $status) {
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
-        </div>
-        <ul class="list-unstyled components">
-            <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
-            <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
-            <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
-            <li><a href="maladies.php"><i class="fas fa-stethoscope"></i> Maladies</a></li>
-            <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
-            <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
-            <li><a href="payments.php"><i class="fas fa-money-bill-wave"></i> Payments</a></li>
-            <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-user"></i> Delivery Personnel</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </nav>
+    <div class="sidebar-header">
+    <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+    </div>
+    <ul class="list-unstyled components">
+        <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+        <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+        <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+        <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+        <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+        <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+        <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+        <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+        <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+        <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+        <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+        <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+        <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+        <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+        <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
+
+        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</nav>
+
 
     <!-- Page Content -->
     <div id="content">
@@ -195,17 +215,21 @@ function sendPaymentNotification($email, $status) {
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
+
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
         
         <div class="container mt-5">
-            <h1>Manage Payments</h1>
+            <h1><i class="fas fa-dollar-sign"></i> Manage Payments</h1>
 
-            <!-- Export to CSV -->
+            <!-- Export to Excel -->
             <form method="POST" action="payments.php">
-                <button type="submit" name="export" class="btn btn-success mb-4"><i class="fas fa-file-csv"></i> Export to CSV</button>
+                <button type="submit" name="export" class="btn btn-success mb-4"><i class="fas fa-file-excel"></i> Export to Excel</button>
             </form>
 
             <!-- Search Form -->
@@ -241,7 +265,7 @@ function sendPaymentNotification($email, $status) {
                         // Reset the orders result set again for the add form
                         $ordersResult->data_seek(0);
                         while ($order = $ordersResult->fetch_assoc()): ?>
-                            <option value="<?php echo $order['order_id']; ?>"><?php echo $order['order_id']; ?></option>
+                            <option value="<?php echo $order['order_id']; ?>"><?php echo $order['order_id']; ?> - <?php echo $order['user_name']; ?></option>
                         <?php endwhile; ?>
                     </select>
                 </div>
@@ -269,9 +293,10 @@ function sendPaymentNotification($email, $status) {
                     <tr>
                         <th>Payment ID</th>
                         <th>Order ID</th>
+                        <th>User Name</th>
                         <th>Payment Method</th>
                         <th>Status</th>
-                        <th>Order Total</th>
+                        <th>Order Total (MAD)</th>
                         <th>Created At</th>
                         <th>Updated At</th>
                         <th>Actions</th>
@@ -282,9 +307,10 @@ function sendPaymentNotification($email, $status) {
                         <tr>
                             <td><?php echo $row['payment_id']; ?></td>
                             <td><?php echo $row['order_id']; ?></td>
+                            <td><?php echo $row['user_name']; ?></td>
                             <td><?php echo $row['payment_method']; ?></td>
                             <td><?php echo $row['status']; ?></td>
-                            <td><?php echo $row['order_total']; ?></td>
+                            <td><?php echo $row['order_total']; ?> </td>
                             <td><?php echo $row['created_at']; ?></td>
                             <td><?php echo $row['updated_at']; ?></td>
                             <td>
@@ -317,9 +343,9 @@ function sendPaymentNotification($email, $status) {
                                                 <select class="form-control" id="order_id" name="order_id" required>
                                                     <?php
                                                     // Reset the orders result set again for the edit modal
-                                                    $ordersResultEdit = $conn->query("SELECT order_id FROM orders");
+                                                    $ordersResultEdit = $conn->query("SELECT order_id, users.name AS user_name FROM orders INNER JOIN users ON orders.user_id = users.user_id");
                                                     while ($order = $ordersResultEdit->fetch_assoc()): ?>
-                                                        <option value="<?php echo $order['order_id']; ?>" <?php if ($row['order_id'] == $order['order_id']) echo 'selected'; ?>><?php echo $order['order_id']; ?></option>
+                                                        <option value="<?php echo $order['order_id']; ?>" <?php if ($row['order_id'] == $order['order_id']) echo 'selected'; ?>><?php echo $order['order_id']; ?> - <?php echo $order['user_name']; ?></option>
                                                     <?php endwhile; ?>
                                                 </select>
                                             </div>

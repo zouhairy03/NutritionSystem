@@ -9,6 +9,7 @@ require 'config/db.php';
 // Handle form submission for adding or editing delivery
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_delivery'])) {
     $delivery_id = $_POST['delivery_id'];
+    $order_id = $_POST['order_id'];
     $status = $_POST['status'];
     $scheduled_at = $_POST['scheduled_at'];
     $delivered_at = $_POST['delivered_at'];
@@ -16,12 +17,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['save_delivery'])) {
 
     if ($delivery_id) {
         // Edit existing delivery
-        $stmt = $conn->prepare("UPDATE deliveries SET status = ?, scheduled_at = ?, delivered_at = ?, delivery_person_id = ? WHERE delivery_id = ?");
-        $stmt->bind_param("sssii", $status, $scheduled_at, $delivered_at, $delivery_person_id, $delivery_id);
+        $stmt = $conn->prepare("UPDATE deliveries SET order_id = ?, status = ?, scheduled_at = ?, delivered_at = ?, delivery_person_id = ? WHERE delivery_id = ?");
+        $stmt->bind_param("isssii", $order_id, $status, $scheduled_at, $delivered_at, $delivery_person_id, $delivery_id);
     } else {
         // Add new delivery
-        $stmt = $conn->prepare("INSERT INTO deliveries (status, scheduled_at, delivered_at, delivery_person_id) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("sssi", $status, $scheduled_at, $delivered_at, $delivery_person_id);
+        $stmt = $conn->prepare("INSERT INTO deliveries (order_id, status, scheduled_at, delivered_at, delivery_person_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssi", $order_id, $status, $scheduled_at, $delivered_at, $delivery_person_id);
     }
     $stmt->execute();
     $stmt->close();
@@ -55,10 +56,12 @@ $page = isset($_GET['page']) ? $_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
 // Build query
-$query = "SELECT deliveries.*, orders.order_id, users.name AS user_name, users.email AS user_email, delivery_personnel.name AS delivery_person FROM deliveries
+$query = "SELECT deliveries.*, orders.order_id, users.name AS user_name, users.email AS user_email, delivery_personnel.name AS delivery_person, addresses.street, addresses.city, addresses.state, addresses.zip_code, addresses.country 
+FROM deliveries
 JOIN orders ON deliveries.order_id = orders.order_id
 JOIN users ON orders.user_id = users.user_id
 LEFT JOIN delivery_personnel ON deliveries.delivery_person_id = delivery_personnel.id
+JOIN addresses ON users.user_id = addresses.user_id
 WHERE (users.name LIKE '%$search%' OR users.email LIKE '%$search%' OR deliveries.status LIKE '%$search%')
 AND ('$filter_status' = '' OR deliveries.status = '$filter_status')
 AND ('$filter_person' = '' OR deliveries.delivery_person_id = '$filter_person')
@@ -88,17 +91,27 @@ while ($person = $delivery_personnel->fetch_assoc()) {
     $personnel_options .= "<option value='{$person['id']}'>{$person['name']}</option>";
 }
 
-// Handle export to CSV
-if (isset($_GET['export']) && $_GET['export'] == 'csv') {
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment;filename=deliveries.csv');
+// Fetch users and their addresses
+$user_addresses_query = $conn->query("SELECT orders.order_id, users.name, addresses.street, addresses.city, addresses.state, addresses.zip_code, addresses.country 
+                                      FROM users 
+                                      JOIN addresses ON users.user_id = addresses.user_id
+                                      JOIN orders ON users.user_id = orders.user_id");
+$user_addresses = [];
+while ($row = $user_addresses_query->fetch_assoc()) {
+    $user_addresses[] = $row;
+}
+
+// Handle export to Excel
+if (isset($_GET['export']) && $_GET['export'] == 'excel') {
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment;filename=deliveries.xls');
 
     $output = fopen('php://output', 'w');
-    fputcsv($output, array('Delivery ID', 'Order ID', 'User Name', 'User Email', 'Status', 'Scheduled At', 'Delivered At', 'Delivery Person'));
+    fputcsv($output, array('Delivery ID', 'Order ID', 'User Name', 'User Email', 'Status', 'Scheduled At', 'Delivered At', 'Delivery Person', 'Street', 'City', 'State', 'Zip Code', 'Country'), "\t");
 
     $result = $conn->query($query);
     while ($row = $result->fetch_assoc()) {
-        fputcsv($output, $row);
+        fputcsv($output, $row, "\t");
     }
     fclose($output);
     exit();
@@ -126,7 +139,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background: #809B53; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -135,7 +148,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background: #809B53; /* Green color */
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -151,7 +164,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -161,12 +174,15 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
         }
         .card {
             margin-bottom: 20px;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .card i {
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
@@ -182,32 +198,44 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
-        </div>
-        <ul class="list-unstyled components">
-            <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
-            <li><a href="orders.php"><i class="fas fa-box"></i> Orders</a></li>
-            <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
-            <li><a href="maladies.php"><i class="fas fa-heartbeat"></i> Maladies</a></li>
-            <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
-            <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
-            <li><a href="payments.php"><i class="fas fa-credit-card"></i> Payments</a></li>
-            <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-user-tie"></i> Delivery Personnel</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </nav>
+    <div class="sidebar-header">
+    <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+    </div>
+    <ul class="list-unstyled components">
+        <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+        <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+        <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+        <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+        <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+        <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+        <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+        <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+        <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+        <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+        <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+        <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+        <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+        <!-- <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li> -->
+        <!-- <li><a href="marketing.php"><i class="fas fa-bullhorn"></i> Marketing Campaigns</a></li> -->
+        <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+        <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
 
+        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</nav>
     <!-- Page Content -->
     <div id="content">
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
 
@@ -230,7 +258,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
                 <input type="date" name="start_date" class="form-control mr-2" value="<?php echo $start_date; ?>">
                 <input type="date" name="end_date" class="form-control mr-2" value="<?php echo $end_date; ?>">
                 <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
-                <a href="deliveries.php?export=csv" class="btn btn-secondary ml-2"><i class="fas fa-file-csv"></i> Export to CSV</a>
+                <a href="deliveries.php?export=excel" class="btn btn-secondary ml-2"><i class="fas fa-file-excel"></i> Export to Excel</a>
             </form>
             <div class="table-responsive">
                 <table class="table table-striped">
@@ -240,6 +268,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
                             <th>Order ID</th>
                             <th>User Name</th>
                             <th>User Email</th>
+                            <th>Address</th>
                             <th>Status</th>
                             <th>Scheduled At</th>
                             <th>Delivered At</th>
@@ -254,6 +283,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
                                 <td><?php echo $delivery['order_id']; ?></td>
                                 <td><?php echo $delivery['user_name']; ?></td>
                                 <td><?php echo $delivery['user_email']; ?></td>
+                                <td><?php echo $delivery['street'] . ', ' . $delivery['city'] . ', ' . $delivery['state'] . ', ' . $delivery['zip_code'] . ', ' . $delivery['country']; ?></td>
                                 <td><?php echo $delivery['status']; ?></td>
                                 <td><?php echo $delivery['scheduled_at']; ?></td>
                                 <td><?php echo $delivery['delivered_at']; ?></td>
@@ -261,11 +291,12 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm edit-btn" data-toggle="modal" data-target="#editDeliveryModal"
                                         data-id="<?php echo $delivery['delivery_id']; ?>"
+                                        data-order-id="<?php echo $delivery['order_id']; ?>"
                                         data-status="<?php echo $delivery['status']; ?>"
                                         data-scheduled="<?php echo $delivery['scheduled_at']; ?>"
                                         data-delivered="<?php echo $delivery['delivered_at']; ?>"
                                         data-delivery-person-id="<?php echo $delivery['delivery_person_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
-                                    <a href="delete_delivery.php?id=<?php echo $delivery['delivery_id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this delivery?');"><i class="fas fa-trash-alt"></i> Delete</a>
+                                    <a href="delete_delivery.php?id=<?php echo $delivery['delivery_id']; ?>" class="btn btn-danger btn-sm delete-delivery"><i class="fas fa-trash-alt"></i> Delete</a>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
@@ -300,6 +331,18 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
             <div class="modal-body">
                 <form method="POST" id="editDeliveryForm">
                     <input type="hidden" id="edit_delivery_id" name="delivery_id">
+                    <div class="form-group">
+                        <label for="edit_order_id">Order</label>
+                        <select id="edit_order_id" name="order_id" class="form-control" required>
+                            <?php foreach ($user_addresses as $user): ?>
+                                <option value="<?php echo $user['order_id']; ?>" data-address="<?php echo htmlspecialchars($user['street'] . ', ' . $user['city'] . ', ' . $user['state'] . ', ' . $user['zip_code'] . ', ' . $user['country']); ?>"><?php echo $user['name']; ?> - Order #<?php echo $user['order_id']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_address">Address</label>
+                        <input type="text" id="edit_address" name="address" class="form-control" readonly>
+                    </div>
                     <div class="form-group">
                         <label for="edit_status">Status</label>
                         <select id="edit_status" name="status" class="form-control" required>
@@ -341,6 +384,18 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
             <div class="modal-body">
                 <form method="POST" id="addDeliveryForm">
                     <div class="form-group">
+                        <label for="add_order_id">Order</label>
+                        <select id="add_order_id" name="order_id" class="form-control" required>
+                            <?php foreach ($user_addresses as $user): ?>
+                                <option value="<?php echo $user['order_id']; ?>" data-address="<?php echo htmlspecialchars($user['street'] . ', ' . $user['city'] . ', ' . $user['state'] . ', ' . $user['zip_code'] . ', ' . $user['country']); ?>"><?php echo $user['name']; ?> - Order #<?php echo $user['order_id']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="add_address">Address</label>
+                        <input type="text" id="add_address" name="address" class="form-control" readonly>
+                    </div>
+                    <div class="form-group">
                         <label for="add_status">Status</label>
                         <select id="add_status" name="status" class="form-control" required>
                             <option value="Pending">Pending</option>
@@ -374,29 +429,55 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
 <script>
     $(document).on("click", ".edit-btn", function () {
         var deliveryId = $(this).data('id');
+        var orderId = $(this).data('order-id');
         var status = $(this).data('status');
         var scheduled = $(this).data('scheduled');
         var delivered = $(this).data('delivered');
         var deliveryPersonId = $(this).data('delivery-person-id');
 
         $("#edit_delivery_id").val(deliveryId);
+        $("#edit_order_id").val(orderId);
         $("#edit_status").val(status);
         $("#edit_scheduled_at").val(scheduled);
         $("#edit_delivered_at").val(delivered);
         $("#edit_delivery_person_id").val(deliveryPersonId);
+
+        var address = $('#edit_order_id option:selected').data('address');
+        $("#edit_address").val(address);
     });
 
     $('#editDeliveryModal').on('hidden.bs.modal', function () {
         $("#edit_delivery_id").val('');
+        $("#edit_order_id").val('');
         $("#edit_status").val('');
         $("#edit_scheduled_at").val('');
         $("#edit_delivered_at").val('');
         $("#edit_delivery_person_id").val('');
+        $("#edit_address").val('');
+    });
+
+    $('#add_order_id').on('change', function () {
+        var address = $(this).find('option:selected').data('address');
+        $('#add_address').val(address);
+    });
+
+    $('#edit_order_id').on('change', function () {
+        var address = $(this).find('option:selected').data('address');
+        $('#edit_address').val(address);
     });
 
     $(document).ready(function () {
         $('#sidebarCollapse').on('click', function () {
             $('#sidebar').toggleClass('active');
+        });
+
+        // Confirmation for delete
+        document.querySelectorAll('.delete-delivery').forEach(function(element) {
+            element.addEventListener('click', function(event) {
+                if (!confirm('Are you sure you want to delete this delivery?')) {
+                    event.preventDefault();
+                }
+            });
         });
     });
 </script>

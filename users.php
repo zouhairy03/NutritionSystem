@@ -16,6 +16,7 @@ if (isset($_POST['add_user'])) {
     $sql = "INSERT INTO users (name, email, phone, password, created_at, updated_at) VALUES ('$name', '$email', '$phone', '$password', NOW(), NOW())";
     $conn->query($sql);
     header("Location: users.php");
+    exit();
 }
 
 // Handle Edit User
@@ -28,30 +29,57 @@ if (isset($_POST['edit_user'])) {
     $sql = "UPDATE users SET name='$name', email='$email', phone='$phone', updated_at=NOW() WHERE user_id='$user_id'";
     $conn->query($sql);
     header("Location: users.php");
+    exit();
 }
 
 // Handle Delete User
 $delete_error = "";
-if (isset($_GET['delete_user'])) {
-    $user_id = $_GET['delete_user'];
+if (isset($_POST['confirm_delete_user'])) {
+    $user_id = $_POST['user_id'];
 
     // Check for related orders
     $related_orders_query = "SELECT COUNT(*) AS count FROM orders WHERE user_id='$user_id'";
     $related_orders_result = $conn->query($related_orders_query);
     $related_orders_count = $related_orders_result->fetch_assoc()['count'];
 
+    // Check for related feedback
+    $related_feedback_query = "SELECT COUNT(*) AS count FROM feedback WHERE user_id='$user_id'";
+    $related_feedback_result = $conn->query($related_feedback_query);
+    $related_feedback_count = $related_feedback_result->fetch_assoc()['count'];
+
     if ($related_orders_count > 0) {
         $delete_error = "Cannot delete user. There are orders associated with this user.";
+    } elseif ($related_feedback_count > 0) {
+        $delete_error = "Cannot delete user. There is feedback associated with this user.";
     } else {
         $sql = "DELETE FROM users WHERE user_id='$user_id'";
         $conn->query($sql);
         header("Location: users.php");
+        exit();
     }
 }
 
 // Fetch users data
-$sql = "SELECT * FROM users";
+$search = $_GET['search'] ?? '';
+$filter = $_GET['filter'] ?? 'name';
+$sql = "SELECT * FROM users WHERE $filter LIKE '%$search%'";
 $result = $conn->query($sql);
+
+// Handle Excel download
+if (isset($_GET['download'])) {
+    header("Content-Type: application/vnd.ms-excel");
+    header("Content-Disposition: attachment; filename=users.xls");
+    $output = fopen("php://output", "w");
+    // Use tab delimiter instead of comma
+    fputcsv($output, array('User ID', 'Name', 'Email', 'Phone', 'Created At', 'Updated At'), "\t");
+    $download_sql = "SELECT * FROM users";
+    $download_result = $conn->query($download_sql);
+    while ($row = $download_result->fetch_assoc()) {
+        fputcsv($output, $row, "\t");
+    }
+    fclose($output);
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -75,7 +103,11 @@ $result = $conn->query($sql);
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background:        #809B53  ; /* Green color */
+            /* #497626 */
+            /* #7CC644 */
+            /* #39B54A */
+            /* #809B53 */
             color: #fff;
             transition: all 0.3s;
         }
@@ -84,7 +116,7 @@ $result = $conn->query($sql);
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -100,7 +132,7 @@ $result = $conn->query($sql);
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -118,7 +150,7 @@ $result = $conn->query($sql);
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
@@ -127,6 +159,26 @@ $result = $conn->query($sql);
         .modal .modal-dialog {
             max-width: 800px;
         }
+        .table-search {
+            margin-bottom: 20px;
+        }
+        .navbar {
+
+            color: #fff;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+        }
+        .navbar .navbar-brand:hover {
+            color: #f8f9fa;
+        }
+        .navbar .logo {
+            width: 150px;
+            height: auto;
+        }
+        .navbar .ml-auto {
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
@@ -134,7 +186,7 @@ $result = $conn->query($sql);
     <!-- Sidebar -->
     <nav id="sidebar">
         <div class="sidebar-header">
-            <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+        <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
             <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -146,19 +198,29 @@ $result = $conn->query($sql);
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-people-carry"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
 
     <!-- Page Content -->
     <div id="content">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <nav class="navbar navbar-expand-lg" >
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
         
@@ -168,6 +230,24 @@ $result = $conn->query($sql);
             <?php if ($delete_error): ?>
                 <div class="alert alert-danger"><?php echo $delete_error; ?></div>
             <?php endif; ?>
+
+            <!-- Search and Filter -->
+            <div class="table-search">
+                <form action="users.php" method="GET" class="form-inline">
+                    <div class="form-group mb-2">
+                        <input type="text" name="search" class="form-control" placeholder="Search" value="<?php echo $search; ?>">
+                    </div>
+                    <div class="form-group mx-sm-3 mb-2">
+                        <select name="filter" class="form-control">
+                            <option value="name" <?php if ($filter == 'name') echo 'selected'; ?>>Name</option>
+                            <option value="email" <?php if ($filter == 'email') echo 'selected'; ?>>Email</option>
+                            <option value="phone" <?php if ($filter == 'phone') echo 'selected'; ?>>Phone</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search"></i> Search</button>
+                    <a href="users.php?download=true" class="btn btn-success mb-2 ml-2"><i class="fas fa-file-excel"></i> Download Excel</a>
+                </form>
+            </div>
 
             <!-- Add User Button -->
             <button class="btn btn-success mb-4" data-toggle="modal" data-target="#addUserModal"><i class="fas fa-plus"></i> Add User</button>
@@ -194,8 +274,8 @@ $result = $conn->query($sql);
                                 <!-- Edit User Button -->
                                 <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editUserModal<?php echo $row['user_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
 
-                                <!-- Delete User Link -->
-                                <a href="users.php?delete_user=<?php echo $row['user_id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</a>
+                                <!-- Delete User Button -->
+                                <button class="btn btn-sm btn-danger" data-toggle="modal" data-target="#confirmDeleteModal" data-userid="<?php echo $row['user_id']; ?>"><i class="fas fa-trash"></i> Delete</button>
                             </td>
                         </tr>
 
@@ -273,13 +353,44 @@ $result = $conn->query($sql);
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<!-- Confirm Delete Modal -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this user?
+                <form action="users.php" method="POST">
+                    <input type="hidden" name="user_id" id="delete-user-id">
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger" name="confirm_delete_user">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
     $(document).ready(function () {
         $('#sidebarCollapse').on('click', function () {
             $('#sidebar').toggleClass('active');
+        });
+
+        $('#confirmDeleteModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var userId = button.data('userid');
+            var modal = $(this);
+            modal.find('#delete-user-id').val(userId);
         });
     });
 </script>

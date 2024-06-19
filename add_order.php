@@ -88,21 +88,33 @@ $couponsResult = $conn->query("SELECT * FROM coupons");
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
-        </div>
-        <ul class="list-unstyled components">
-            <li><a href="dashboard.php">Dashboard</a></li>
-            <li><a href="users.php">Users</a></li>
-            <li><a href="orders.php">Orders</a></li>
-            <li><a href="coupons.php">Coupons</a></li>
-            <li><a href="maladies.php">Maladies</a></li>
-            <li><a href="notifications.php">Notifications</a></li>
-            <li><a href="meals.php">Meals</a></li>
-            <li><a href="payments.php">Payments</a></li>
-            <li><a href="logout.php">Logout</a></li>
-        </ul>
-    </nav>
+    <div class="sidebar-header">
+    <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+    </div>
+    <ul class="list-unstyled components">
+        <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+        <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+        <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+        <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+        <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+        <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+        <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+        <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+        <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+        <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+        <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+        <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+        <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+        <!-- <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li> -->
+        <!-- <li><a href="marketing.php"><i class="fas fa-bullhorn"></i> Marketing Campaigns</a></li> -->
+        <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+        <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
+
+        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</nav>
 
     <!-- Page Content -->
     <div id="content">

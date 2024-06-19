@@ -48,8 +48,9 @@ if (isset($_GET['delete_coupon'])) {
     }
 }
 
-// Fetch coupons data
-$sql = "SELECT * FROM coupons";
+// Handle search functionality
+$search = $_GET['search'] ?? '';
+$sql = "SELECT * FROM coupons WHERE code LIKE '%$search%'";
 $result = $conn->query($sql);
 ?>
 
@@ -74,7 +75,7 @@ $result = $conn->query($sql);
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background:    #809B53 ; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -83,7 +84,7 @@ $result = $conn->query($sql);
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background:    #809B53 ; /* Green color */
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -99,7 +100,7 @@ $result = $conn->query($sql);
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -117,7 +118,7 @@ $result = $conn->query($sql);
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
@@ -126,14 +127,33 @@ $result = $conn->query($sql);
         .modal .modal-dialog {
             max-width: 800px;
         }
+        .table-search {
+            margin-bottom: 20px;
+        }
+        .navbar {
+            color: #fff;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+        }
+        .navbar .navbar-brand:hover {
+            color: #f8f9fa;
+        }
+        .navbar .logo {
+            width: 150px;
+            height: auto;
+        }
+        .navbar .ml-auto {
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+    <div class="sidebar-header">
+        <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
             <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -145,19 +165,29 @@ $result = $conn->query($sql);
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-people-carry"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
 
     <!-- Page Content -->
     <div id="content">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <nav class="navbar navbar-expand-lg">
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
         
@@ -167,6 +197,16 @@ $result = $conn->query($sql);
             <?php if ($delete_error): ?>
                 <div class="alert alert-danger"><?php echo $delete_error; ?></div>
             <?php endif; ?>
+
+            <!-- Search Button -->
+            <div class="table-search mb-4">
+                <form action="coupons.php" method="GET" class="form-inline">
+                    <div class="form-group mb-2">
+                        <input type="text" name="search" class="form-control" placeholder="Search" value="<?php echo $_GET['search'] ?? ''; ?>">
+                    </div>
+                    <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search"></i> Search</button>
+                </form>
+            </div>
 
             <!-- Add Coupon Button -->
             <button class="btn btn-success mb-4" data-toggle="modal" data-target="#addCouponModal"><i class="fas fa-plus"></i> Add Coupon</button>
@@ -194,7 +234,7 @@ $result = $conn->query($sql);
                                 <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editCouponModal<?php echo $row['coupon_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
 
                                 <!-- Delete Coupon Link -->
-                                <a href="coupons.php?delete_coupon=<?php echo $row['coupon_id']; ?>" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</a>
+                                <a href="coupons.php?delete_coupon=<?php echo $row['coupon_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this coupon?')"><i class="fas fa-trash"></i> Delete</a>
                             </td>
                         </tr>
 

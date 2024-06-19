@@ -21,8 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // Update query based on whether the password is being updated
     if (!empty($password)) {
-        $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-        $updateQuery = "UPDATE admins SET name='$name', email='$email', password='$hashed_password' WHERE admin_id=$admin_id";
+        $updateQuery = "UPDATE admins SET name='$name', email='$email', password='$password' WHERE admin_id=$admin_id";
     } else {
         $updateQuery = "UPDATE admins SET name='$name', email='$email' WHERE admin_id=$admin_id";
     }
@@ -60,7 +59,7 @@ $admin = $admin_query->fetch_assoc();
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background:    #809B53 ;
             color: #fff;
             transition: all 0.3s;
         }
@@ -69,7 +68,7 @@ $admin = $admin_query->fetch_assoc();
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background:    #809B53 ;
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -81,7 +80,7 @@ $admin = $admin_query->fetch_assoc();
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41;
             background: #fff;
         }
         #content {
@@ -97,7 +96,7 @@ $admin = $admin_query->fetch_assoc();
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .card-header {
-            background: #343a40;
+            background: #3E8E41;
             color: #fff;
             border-bottom: none;
             border-radius: 15px 15px 0 0;
@@ -109,7 +108,7 @@ $admin = $admin_query->fetch_assoc();
     <!-- Sidebar -->
     <nav id="sidebar">
         <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
+        <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
             <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -121,27 +120,30 @@ $admin = $admin_query->fetch_assoc();
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
             <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
             <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
             <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
             <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
-            <li><a href="meal_plans.php"><i class="fas fa-calendar-alt"></i> Meal Plans</a></li>
             <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
-            <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li>
-            <li><a href="marketing.php"><i class="fas fa-bullhorn"></i> Marketing Campaigns</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
+
 
     <!-- Page Content -->
     <div id="content">
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
-                <button type="button" id="sidebarCollapse" class="btn btn-info">
+                <button type="button" id="sidebarCollapse" class="btn btn-success">
                     <i class="fas fa-align-left"></i>
                     <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
 
@@ -183,8 +185,15 @@ $admin = $admin_query->fetch_assoc();
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#sidebarCollapse').on('click', function () {
+            $('#sidebar').toggleClass('active');
+        });
+    });
+</script>
 </body>
 </html>

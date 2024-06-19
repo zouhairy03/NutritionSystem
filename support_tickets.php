@@ -12,8 +12,13 @@ $admin_query = $conn->query("SELECT name FROM admins WHERE admin_id = $admin_id"
 $admin = $admin_query->fetch_assoc();
 $admin_name = $admin['name'];
 
-// Fetch support tickets
-$supportTicketsQuery = $conn->query("SELECT st.*, u.name as user_name FROM support_tickets st JOIN users u ON st.user_id = u.user_id ORDER BY created_at DESC");
+// Handle search and filter
+$search_query = isset($_POST['search_query']) ? $_POST['search_query'] : '';
+$status_filter = isset($_POST['status_filter']) ? $_POST['status_filter'] : '';
+$user_filter = isset($_POST['user_filter']) ? $_POST['user_filter'] : '';
+
+// Fetch support tickets based on search and filter
+$supportTicketsQuery = $conn->query("SELECT st.*, u.name as user_name FROM support_tickets st JOIN users u ON st.user_id = u.user_id WHERE (st.subject LIKE '%$search_query%' OR st.message LIKE '%$search_query%' OR u.name LIKE '%$search_query%') AND (st.status LIKE '%$status_filter%') AND (st.user_id LIKE '%$user_filter%') ORDER BY created_at DESC");
 $supportTickets = [];
 while ($row = $supportTicketsQuery->fetch_assoc()) {
     $supportTickets[] = $row;
@@ -83,6 +88,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
         $supportTickets[] = $row;
     }
 }
+
+// Handle export to Excel
+if (isset($_POST['export_excel'])) {
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename=support_tickets.xls');
+    
+    $output = fopen('php://output', 'w');
+    fputs($output, $bom =(chr(0xEF) . chr(0xBB) . chr(0xBF)));
+    fputcsv($output, array('Ticket ID', 'User Name', 'Subject', 'Message', 'Status', 'Created At'));
+
+    $result = $conn->query("SELECT st.*, u.name as user_name FROM support_tickets st JOIN users u ON st.user_id = u.user_id");
+    while ($row = $result->fetch_assoc()) {
+        fputcsv($output, $row);
+    }
+    fclose($output);
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -106,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background:    #809B53 ;
             color: #fff;
             transition: all 0.3s;
         }
@@ -115,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background:    #809B53 ;
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -127,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41;
             background: #fff;
         }
         #content {
@@ -143,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .card-header {
-            background: #343a40;
+            background:    #809B53 ;
             color: #fff;
             border-bottom: none;
             border-radius: 15px 15px 0 0;
@@ -155,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
     <!-- Sidebar -->
     <nav id="sidebar">
         <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
+            <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
             <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -167,15 +189,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
             <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
             <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
             <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
             <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
-            <li><a href="meal_plans.php"><i class="fas fa-calendar-alt"></i> Meal Plans</a></li>
             <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
-            <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li>
-            <li><a href="marketing.php"><i class="fas fa-bullhorn"></i> Marketing Campaigns</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
@@ -184,16 +205,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
     <div id="content">
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
             <div class="container-fluid">
-                <button type="button" id="sidebarCollapse" class="btn btn-info">
+                <button type="button" id="sidebarCollapse" class="btn btn-success">
                     <i class="fas fa-align-left"></i>
                     <span></span>
                 </button>
-                <button type="button" class="btn btn-success ml-auto" data-toggle="modal" data-target="#newTicketModal">
-                    <i class="fas fa-plus"></i> Add New Ticket
-                </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
+                
             </div>
+            
         </nav>
-
+      
         <div class="container-fluid">
             <?php if(isset($successMessage)): ?>
                 <div class="alert alert-success" role="alert">
@@ -211,6 +234,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
                     <i class="fas fa-ticket-alt"></i> Support Tickets
                 </div>
                 <div class="card-body">
+                    <form method="POST" action="support_tickets.php" class="form-inline mb-4">
+                        <input type="text" class="form-control mr-2" name="search_query" placeholder="Search" value="<?php echo $search_query; ?>">
+                        <select class="form-control mr-2" name="status_filter">
+                            <option value="">All Statuses</option>
+                            <option value="Open" <?php if ($status_filter == 'Open') echo 'selected'; ?>>Open</option>
+                            <option value="In Progress" <?php if ($status_filter == 'In Progress') echo 'selected'; ?>>In Progress</option>
+                            <option value="Closed" <?php if ($status_filter == 'Closed') echo 'selected'; ?>>Closed</option>
+                        </select>
+                        <select class="form-control mr-2" name="user_filter">
+                            <option value="">All Users</option>
+                            <?php foreach ($users as $user): ?>
+                                <option value="<?php echo $user['user_id']; ?>" <?php if ($user_filter == $user['user_id']) echo 'selected'; ?>><?php echo $user['name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-primary mr-2"><i class="fas fa-search"></i> Search</button>
+                        <button type="submit" class="btn btn-secondary" name="export_excel"><i class="fas fa-file-excel"></i> Export to Excel</button>
+                        <button type="button" class="btn btn-success ml-auto" data-toggle="modal" data-target="#newTicketModal">
+                    <i class="fas fa-plus"></i> Add New Ticket
+                </button>
+                    </form>
                     <table class="table table-striped">
                         <thead>
                             <tr>
@@ -311,5 +354,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_ticket'])) {
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#sidebarCollapse').on('click', function () {
+            $('#sidebar').toggleClass('active');
+        });
+    });
+</script>
 </body>
 </html>

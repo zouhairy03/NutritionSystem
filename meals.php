@@ -89,30 +89,6 @@ if (isset($_GET['delete_meal'])) {
     }
 }
 
-// Handle bulk delete action
-if (isset($_POST['delete_selected'])) {
-    $selected_meals = $_POST['selected_meals'];
-    if (!empty($selected_meals)) {
-        $ids = implode(',', $selected_meals);
-
-        // Check for related orders
-        $related_orders_query = "SELECT meal_id FROM orders WHERE meal_id IN ($ids)";
-        $related_orders_result = $conn->query($related_orders_query);
-        $related_meals = [];
-        while ($row = $related_orders_result->fetch_assoc()) {
-            $related_meals[] = $row['meal_id'];
-        }
-
-        if (!empty($related_meals)) {
-            $delete_error = "Cannot delete meals. There are orders associated with these meals.";
-        } else {
-            $sql = "DELETE FROM meals WHERE meal_id IN ($ids)";
-            $conn->query($sql);
-            header("Location: meals.php");
-        }
-    }
-}
-
 // Handle Search and Filter
 $search_query = isset($_POST['search_query']) ? $_POST['search_query'] : "";
 $malady_filter = isset($_POST['malady_filter']) ? $_POST['malady_filter'] : "";
@@ -139,6 +115,23 @@ $sql_count = "SELECT COUNT(*) AS total FROM meals $search_sql $malady_sql $categ
 $count_result = $conn->query($sql_count);
 $total_meals = $count_result->fetch_assoc()['total'];
 $total_pages = ceil($total_meals / $limit);
+
+// Handle Excel Export
+if (isset($_GET['export'])) {
+    header("Content-Type: application/vnd.ms-excel");
+    header("Content-Disposition: attachment; filename=meals.xls");
+    $output = fopen("php://output", "w");
+    fputcsv($output, array('Meal ID', 'Name', 'Description', 'Malady', 'Category', 'Price', 'Stock', 'Image', 'Created At', 'Updated At'), "\t");
+    $export_sql = "SELECT meals.*, maladies.name AS malady_name, categories.name AS category_name FROM meals 
+                   LEFT JOIN maladies ON meals.malady_id=maladies.malady_id 
+                   LEFT JOIN categories ON meals.category=categories.category_id";
+    $export_result = $conn->query($export_sql);
+    while ($row = $export_result->fetch_assoc()) {
+        fputcsv($output, $row, "\t");
+    }
+    fclose($output);
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -162,7 +155,7 @@ $total_pages = ceil($total_meals / $limit);
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background: #809B53; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -171,7 +164,7 @@ $total_pages = ceil($total_meals / $limit);
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background: #809B53; /* Green color */
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -183,7 +176,7 @@ $total_pages = ceil($total_meals / $limit);
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -201,7 +194,7 @@ $total_pages = ceil($total_meals / $limit);
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
@@ -210,14 +203,30 @@ $total_pages = ceil($total_meals / $limit);
         .modal .modal-dialog {
             max-width: 800px;
         }
+        .navbar {
+            color: #fff;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+        }
+        .navbar .navbar-brand:hover {
+            color: #f8f9fa;
+        }
+        .navbar .logo {
+            width: 150px;
+            height: auto;
+        }
+        .navbar .ml-auto {
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+    <div class="sidebar-header">
+        <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
             <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -229,19 +238,29 @@ $total_pages = ceil($total_meals / $limit);
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-people-carry"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
 
     <!-- Page Content -->
     <div id="content">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <nav class="navbar navbar-expand-lg">
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
         
@@ -324,7 +343,7 @@ $total_pages = ceil($total_meals / $limit);
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="price">Price:</label>
+                    <label for="price">Price (MAD):</label>
                     <input type="number" step="0.01" class="form-control" id="price" name="price" required>
                 </div>
                 <div class="form-group">
@@ -344,6 +363,7 @@ $total_pages = ceil($total_meals / $limit);
             <!-- Meals Table -->
             <h2>Meals List</h2>
             <form id="bulkActionForm" action="meals.php" method="POST">
+                <a href="meals.php?export=true" class="btn btn-success mb-3"><i class="fas fa-file-excel"></i> Export to Excel</a>
                 <table class="table table-bordered">
                     <thead class="thead-light">
                         <tr>
@@ -353,7 +373,7 @@ $total_pages = ceil($total_meals / $limit);
                             <th>Description</th>
                             <th>Malady</th>
                             <th>Category</th>
-                            <th>Price</th>
+                            <th>Price (MAD)</th>
                             <th>Stock</th> <!-- Add stock column -->
                             <th>Image</th>
                             <th>Created At</th>
@@ -402,7 +422,7 @@ $total_pages = ceil($total_meals / $limit);
                                             <p><strong>Description:</strong> <?php echo $row['description']; ?></p>
                                             <p><strong>Category:</strong> <?php echo $row['category_name']; ?></p>
                                             <p><strong>Malady:</strong> <?php echo $row['malady_name']; ?></p>
-                                            <p><strong>Price:</strong> <?php echo $row['price']; ?></p>
+                                            <p><strong>Price (MAD):</strong> <?php echo $row['price']; ?></p>
                                             <p><strong>Stock:</strong> <?php echo $row['stock']; ?></p> <!-- Display stock -->
                                             <?php if ($row['image']): ?>
                                                 <p><strong>Image:</strong><br><img src="<?php echo $row['image']; ?>" alt="<?php echo $row['name']; ?>" style="width: 100px;"></p>
@@ -459,7 +479,7 @@ $total_pages = ceil($total_meals / $limit);
                                                     </select>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label for="price">Price:</label>
+                                                    <label for="price">Price (MAD):</label>
                                                     <input type="number" step="0.01" class="form-control" id="price" name="price" value="<?php echo $row['price']; ?>" required>
                                                 </div>
                                                 <div class="form-group">

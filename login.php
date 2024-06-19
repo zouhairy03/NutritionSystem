@@ -10,24 +10,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Using prepared statements to prevent SQL injection
     $stmt = $conn->prepare("SELECT * FROM admins WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    if ($stmt) {
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
 
-    if ($result->num_rows > 0) {
-        $admin = $result->fetch_assoc();
-        // Directly compare plain text passwords
-        if ($password == $admin['password']) {
-            $_SESSION['admin_id'] = $admin['admin_id'];
-            header("Location: dashboard.php");
-            exit();
+        if ($result->num_rows > 0) {
+            $admin = $result->fetch_assoc();
+            // Direct comparison since password is not hashed
+            if ($password === $admin['password']) {
+                $_SESSION['admin_id'] = $admin['admin_id'];
+                header("Location: dashboard.php");
+                exit();
+            } else {
+                $error = "Invalid email or password.";
+            }
         } else {
             $error = "Invalid email or password.";
         }
+        $stmt->close();
     } else {
-        $error = "Invalid email or password.";
+        $error = "Failed to prepare the statement.";
     }
-    $stmt->close();
     $conn->close();
 }
 ?>
@@ -42,7 +46,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -54,12 +57,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: rgba(255, 255, 255, 0.1);
             padding: 40px 60px;
             border-radius: 15px;
-            color: #fff;
+            color: black;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
             max-width: 500px;
             width: 100%;
             text-align: center;
+        }
+        .login-container img {
+            margin-bottom: 20px;
+            height: 100px;
         }
         .login-container h2 {
             margin-bottom: 30px;
@@ -68,12 +75,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-control {
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid #fff;
-            color: #fff;
+            color: #809B53;
             height: 50px;
             font-size: 1.2em;
         }
         .form-control::placeholder {
-            color: #fff;
+            color: #809B53;
         }
         .btn-primary {
             background: #007bff;
@@ -87,7 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .alert {
             background: #ff4d4d;
             border: none;
-            color: #fff;
+            color: #ffff;
         }
         .icon {
             font-size: 4em;
@@ -98,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
 <div class="login-container">
-    <i class="fas fa-user-shield icon"></i>
+    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="width: 80%; height: 150px;" alt="NutriDaily Logo">
     <h2>Admin Login</h2>
     <?php if (!empty($error)): ?>
         <div class="alert"><?php echo $error; ?></div>
@@ -110,7 +117,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="form-group">
             <input type="password" name="password" class="form-control" required placeholder="Password">
         </div>
-        <button type="submit" class="btn btn-primary btn-block">Login</button>
+        <button type="submit" class="btn btn-success btn-block">Login</button>
     </form>
 </div>
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

@@ -25,11 +25,21 @@ $results_per_page = 10;
 $this_page_first_result = ($page - 1) * $results_per_page;
 
 // Fetch delivery routes data with search and pagination
-$sql = "SELECT * FROM delivery_routes WHERE route_name LIKE '%$search%' ORDER BY route_name ASC LIMIT $this_page_first_result, $results_per_page";
+$sql = "SELECT delivery_routes.*, CONCAT(addresses.street, ', ', addresses.city, ', ', addresses.state, ', ', addresses.zip_code, ', ', addresses.country) AS address 
+        FROM delivery_routes 
+        JOIN orders ON delivery_routes.route_id = orders.delivery_route_id 
+        JOIN addresses ON orders.address_id = addresses.address_id 
+        WHERE delivery_routes.route_name LIKE '%$search%' 
+        ORDER BY delivery_routes.route_name ASC 
+        LIMIT $this_page_first_result, $results_per_page";
 $deliveryRoutesQuery = $conn->query($sql);
 
 // Fetch total results for pagination
-$total_results = $conn->query("SELECT COUNT(*) AS count FROM delivery_routes WHERE route_name LIKE '%$search%'")->fetch_assoc()['count'];
+$total_results = $conn->query("SELECT COUNT(*) AS count 
+                               FROM delivery_routes 
+                               JOIN orders ON delivery_routes.route_id = orders.delivery_route_id 
+                               JOIN addresses ON orders.address_id = addresses.address_id 
+                               WHERE delivery_routes.route_name LIKE '%$search%'")->fetch_assoc()['count'];
 $total_pages = ceil($total_results / $results_per_page);
 
 // Fetch delivery personnel data
@@ -163,24 +173,33 @@ if (isset($_GET['delete_route'])) {
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3>Admin Dashboard</h3>
-        </div>
-        <ul class="list-unstyled components">
-            <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
-            <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
-            <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
-            <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
-            <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
-            <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
-            <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
-            <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-people-carry"></i> Deliver Personnel</a></li>
-            <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
-    </nav>
+    <div class="sidebar-header">
+        <h3>Admin Dashboard</h3>
+    </div>
+    <ul class="list-unstyled components">
+        <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+        <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+        <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+        <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+        <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+        <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+        <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+        <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+        <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+        <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+        <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+        <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+        <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+        <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+        <!-- <li><a href="delivery_routes.php"><i class="fas fa-route"></i> Delivery Routes</a></li> -->
+        <!-- <li><a href="marketing.php"><i class="fas fa-bullhorn"></i> Marketing Campaigns</a></li> -->
+        <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+        <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
+
+        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+    </ul>
+</nav>
 
     <!-- Page Content -->
     <div id="content">
@@ -215,6 +234,7 @@ if (isset($_GET['delete_route'])) {
                     <tr>
                         <th>Route ID</th>
                         <th>Route Name</th>
+                        <th>Address</th>
                         <th>Delivery Person</th>
                         <th>Actions</th>
                     </tr>
@@ -224,6 +244,7 @@ if (isset($_GET['delete_route'])) {
                         <tr>
                             <td><?php echo $row['route_id']; ?></td>
                             <td><?php echo $row['route_name']; ?></td>
+                            <td><?php echo $row['address']; ?></td>
                             <td><?php
                                 $delivery_person_id = $row['delivery_person_id'];
                                 $delivery_person_name_query = $conn->query("SELECT name FROM delivery_personnel WHERE id = $delivery_person_id");

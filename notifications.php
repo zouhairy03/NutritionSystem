@@ -124,7 +124,7 @@ $total_pages = ceil($total_notifications / $limit);
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background: #809B53; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -133,7 +133,7 @@ $total_pages = ceil($total_notifications / $limit);
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background: #809B53; /* Green color */
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -149,7 +149,7 @@ $total_pages = ceil($total_notifications / $limit);
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -167,7 +167,7 @@ $total_pages = ceil($total_notifications / $limit);
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
@@ -175,6 +175,25 @@ $total_pages = ceil($total_notifications / $limit);
         }
         .modal .modal-dialog {
             max-width: 800px;
+        }
+        .table-search {
+            margin-bottom: 20px;
+        }
+        .navbar {
+            color: #fff;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+        }
+        .navbar .navbar-brand:hover {
+            color: #f8f9fa;
+        }
+        .navbar .logo {
+            width: 150px;
+            height: auto;
+        }
+        .navbar .ml-auto {
+            margin-left: auto;
         }
     </style>
 </head>
@@ -195,19 +214,29 @@ $total_pages = ceil($total_notifications / $limit);
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-people-carry"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
 
     <!-- Page Content -->
     <div id="content">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <nav class="navbar navbar-expand-lg">
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
         
@@ -218,27 +247,26 @@ $total_pages = ceil($total_notifications / $limit);
                 <div class="alert alert-danger"><?php echo $delete_error; ?></div>
             <?php endif; ?>
 
+            <!-- Search and Filter Form -->
+            <div class="table-search mb-4">
+                <form action="notifications.php" method="POST" class="form-inline">
+                    <div class="form-group mb-2">
+                        <input type="text" name="search_query" class="form-control" placeholder="Search" value="<?php echo $_POST['search_query'] ?? ''; ?>">
+                    </div>
+                    <div class="form-group mx-sm-3 mb-2">
+                        <select name="status_filter" class="form-control">
+                            <option value="">All Statuses</option>
+                            <option value="unread" <?php if ($status_filter == 'unread') echo 'selected'; ?>>Unread</option>
+                            <option value="read" <?php if ($status_filter == 'read') echo 'selected'; ?>>Read</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary mb-2" name="search"><i class="fas fa-search"></i> Search</button>
+                    <a href="notifications.php?export=true" class="btn btn-success mb-2 ml-2"><i class="fas fa-file-excel"></i> Export to Excel</a>
+                </form>
+            </div>
+
             <!-- Add Notification Button -->
             <button class="btn btn-success mb-4" data-toggle="modal" data-target="#addNotificationModal"><i class="fas fa-plus"></i> Add Notification</button>
-
-            <!-- Search Form -->
-            <form action="notifications.php" method="POST" class="form-inline mb-4">
-                <input type="text" class="form-control mr-sm-2" name="search_query" placeholder="Search" value="<?php echo $search_query; ?>">
-                <button type="submit" class="btn btn-primary" name="search"><i class="fas fa-search"></i> Search</button>
-            </form>
-
-            <!-- Filter by Status Form -->
-            <form action="notifications.php" method="POST" class="form-inline mb-4">
-                <div class="form-group">
-                    <label for="status_filter">Status:</label>
-                    <select class="form-control ml-2" id="status_filter" name="status_filter">
-                        <option value="">All</option>
-                        <option value="unread" <?php if ($status_filter == 'unread') echo 'selected'; ?>>Unread</option>
-                        <option value="read" <?php if ($status_filter == 'read') echo 'selected'; ?>>Read</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary ml-2" name="filter_status"><i class="fas fa-filter"></i> Filter</button>
-            </form>
 
             <!-- Notifications Table -->
             <h2>Notifications List</h2>

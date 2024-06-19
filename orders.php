@@ -6,9 +6,13 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require 'config/db.php';
 
-// Fetch users and meals for the dropdowns
+// Fetch users, meals, and coupons for the dropdowns
 $usersResult = $conn->query("SELECT user_id, name FROM users");
-$mealsResult = $conn->query("SELECT meal_id, name FROM meals");
+$mealsResult = $conn->query("SELECT meal_id, name, price FROM meals");
+$couponsResult = $conn->query("SELECT coupon_id, code, discount_percentage FROM coupons");
+
+// Order statuses
+$orderStatuses = ['Pending', 'Completed', 'Cancelled'];
 
 // Handle Add Order
 if (isset($_POST['add_order'])) {
@@ -16,6 +20,7 @@ if (isset($_POST['add_order'])) {
     $meal_id = $_POST['meal_id'];
     $quantity = $_POST['quantity'];
     $status = $_POST['status'];
+    $coupon_code = $_POST['coupon_code'];
     $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
@@ -23,8 +28,23 @@ if (isset($_POST['add_order'])) {
     $conn->begin_transaction();
 
     try {
+        // Get coupon discount if applicable
+        $discount = 0;
+        if (!empty($coupon_code)) {
+            $couponQuery = $conn->query("SELECT discount_percentage FROM coupons WHERE code='$coupon_code'");
+            if ($couponQuery->num_rows > 0) {
+                $coupon = $couponQuery->fetch_assoc();
+                $discount = $coupon['discount_percentage'];
+            }
+        }
+
+        // Calculate total after discount
+        $mealPriceQuery = $conn->query("SELECT price FROM meals WHERE meal_id='$meal_id'");
+        $mealPrice = $mealPriceQuery->fetch_assoc()['price'];
+        $total = $mealPrice * $quantity * ((100 - $discount) / 100);
+
         // Insert order
-        $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', NOW(), NOW())";
+        $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, coupon_id, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', (SELECT coupon_id FROM coupons WHERE code='$coupon_code'), NOW(), NOW())";
         $conn->query($sql);
 
         // Update stock
@@ -49,10 +69,26 @@ if (isset($_POST['edit_order'])) {
     $meal_id = $_POST['meal_id'];
     $quantity = $_POST['quantity'];
     $status = $_POST['status'];
+    $coupon_code = $_POST['coupon_code'];
     $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
-    $sql = "UPDATE orders SET user_id='$user_id', meal_id='$meal_id', quantity='$quantity', status='$status', total='$total', payment_method='$payment_method', updated_at=NOW() WHERE order_id='$order_id'";
+    // Get coupon discount if applicable
+    $discount = 0;
+    if (!empty($coupon_code)) {
+        $couponQuery = $conn->query("SELECT discount_percentage FROM coupons WHERE code='$coupon_code'");
+        if ($couponQuery->num_rows > 0) {
+            $coupon = $couponQuery->fetch_assoc();
+            $discount = $coupon['discount_percentage'];
+        }
+    }
+
+    // Calculate total after discount
+    $mealPriceQuery = $conn->query("SELECT price FROM meals WHERE meal_id='$meal_id'");
+    $mealPrice = $mealPriceQuery->fetch_assoc()['price'];
+    $total = $mealPrice * $quantity * ((100 - $discount) / 100);
+
+    $sql = "UPDATE orders SET user_id='$user_id', meal_id='$meal_id', quantity='$quantity', status='$status', total='$total', payment_method='$payment_method', coupon_id=(SELECT coupon_id FROM coupons WHERE code='$coupon_code'), updated_at=NOW() WHERE order_id='$order_id'";
     $conn->query($sql);
     header("Location: orders.php");
 }
@@ -70,6 +106,11 @@ if (isset($_GET['delete_order'])) {
     if ($related_deliveries_count > 0) {
         $delete_error = "Cannot delete order. There are deliveries associated with this order.";
     } else {
+        // Delete related payments
+        $delete_payments_sql = "DELETE FROM payments WHERE order_id='$order_id'";
+        $conn->query($delete_payments_sql);
+
+        // Delete the order
         $sql = "DELETE FROM orders WHERE order_id='$order_id'";
         $conn->query($sql);
         header("Location: orders.php");
@@ -77,8 +118,23 @@ if (isset($_GET['delete_order'])) {
 }
 
 // Fetch orders data
-$sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id";
+$sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name, coupons.code as coupon_code FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id";
 $result = $conn->query($sql);
+
+// Handle Excel download
+if (isset($_GET['download'])) {
+    header("Content-Type: application/vnd.ms-excel");
+    header("Content-Disposition: attachment; filename=orders.xls");
+    $output = fopen("php://output", "w");
+    fputcsv($output, array('Order ID', 'User Name', 'Meal Name', 'Quantity', 'Status', 'Total (MAD)', 'Coupon Code', 'Payment Method', 'Created At'), "\t");
+    $download_sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name, coupons.code as coupon_code FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id";
+    $download_result = $conn->query($download_sql);
+    while ($row = $download_result->fetch_assoc()) {
+        fputcsv($output, $row, "\t");
+    }
+    fclose($output);
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -102,7 +158,7 @@ $result = $conn->query($sql);
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background: #343a40;
+            background:  #809B53 ; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -111,10 +167,14 @@ $result = $conn->query($sql);
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background: #343a40;
+            background:    #809B53 ; /* Green color */
         }
         #sidebar ul.components {
             padding: 20px 0;
+        }
+        #sidebar ul p {
+            color: #fff;
+            padding: 10px;
         }
         #sidebar ul li a {
             padding: 10px;
@@ -123,7 +183,7 @@ $result = $conn->query($sql);
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #343a40;
+            color: #3E8E41; /* Green color */
             background: #fff;
         }
         #content {
@@ -141,7 +201,7 @@ $result = $conn->query($sql);
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #343a40;
+            background: #3E8E41; /* Green color */
             border: none;
             color: #fff;
             padding: 10px;
@@ -150,14 +210,34 @@ $result = $conn->query($sql);
         .modal .modal-dialog {
             max-width: 800px;
         }
+        .table-search {
+            margin-bottom: 20px;
+        }
+        .navbar {
+            /* background: #3E8E41; Green color */
+            color: #fff;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+        }
+        .navbar .navbar-brand:hover {
+            color: #f8f9fa;
+        }
+        .navbar .logo {
+            width: 150px;
+            height: auto;
+        }
+        .navbar .ml-auto {
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
 <div class="wrapper">
     <!-- Sidebar -->
     <nav id="sidebar">
-        <div class="sidebar-header">
-            <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+    <div class="sidebar-header">
+        <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
             <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
@@ -169,19 +249,29 @@ $result = $conn->query($sql);
             <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
             <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
             <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-people-carry"></i> Deliver Personnel</a></li>
+            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
             <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
         </ul>
     </nav>
 
     <!-- Page Content -->
     <div id="content">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <nav class="navbar navbar-expand-lg">
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
-                    <span>Toggle Sidebar</span>
+                    <span></span>
                 </button>
+                <div class="ml-auto">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                </div>
             </div>
         </nav>
         
@@ -191,6 +281,24 @@ $result = $conn->query($sql);
             <?php if ($delete_error): ?>
                 <div class="alert alert-danger"><?php echo $delete_error; ?></div>
             <?php endif; ?>
+
+            <!-- Search, Filter, and Export Buttons -->
+            <div class="table-search mb-4">
+                <form action="orders.php" method="GET" class="form-inline">
+                    <div class="form-group mb-2">
+                        <input type="text" name="search" class="form-control" placeholder="Search" value="<?php echo $_GET['search'] ?? ''; ?>">
+                    </div>
+                    <div class="form-group mx-sm-3 mb-2">
+                        <select name="filter" class="form-control">
+                            <option value="user_name" <?php if ($_GET['filter'] ?? '' == 'user_name') echo 'selected'; ?>>User Name</option>
+                            <option value="meal_name" <?php if ($_GET['filter'] ?? '' == 'meal_name') echo 'selected'; ?>>Meal Name</option>
+                            <option value="status" <?php if ($_GET['filter'] ?? '' == 'status') echo 'selected'; ?>>Status</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search"></i> Search</button>
+                    <a href="orders.php?download=true" class="btn btn-success mb-2 ml-2"><i class="fas fa-file-excel"></i> Export to Excel</a>
+                </form>
+            </div>
 
             <!-- Add Order Button -->
             <button class="btn btn-success mb-4" data-toggle="modal" data-target="#addOrderModal"><i class="fas fa-plus"></i> Add Order</button>
@@ -204,7 +312,8 @@ $result = $conn->query($sql);
                         <th>Meal Name</th>
                         <th>Quantity</th>
                         <th>Status</th>
-                        <th>Total</th>
+                        <th>Total (MAD)</th>
+                        <th>Coupon Code</th>
                         <th>Payment Method</th>
                         <th>Created At</th>
                         <th>Actions</th>
@@ -218,7 +327,8 @@ $result = $conn->query($sql);
                             <td><?php echo $row['meal_name']; ?></td>
                             <td><?php echo $row['quantity']; ?></td>
                             <td><?php echo $row['status']; ?></td>
-                            <td><?php echo $row['total']; ?></td>
+                            <td><?php echo $row['total']; ?> </td>
+                            <td><?php echo $row['coupon_code']; ?></td>
                             <td><?php echo $row['payment_method']; ?></td>
                             <td><?php echo $row['created_at']; ?></td>
                             <td>
@@ -229,7 +339,7 @@ $result = $conn->query($sql);
                                 <a href="orders.php?delete_order=<?php echo $row['order_id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this order?')"><i class="fas fa-trash"></i> Delete</a>
 
                                 <!-- Print Button -->
-                                <button class="btn btn-sm btn-primary" onclick="printOrder(<?php echo $row['order_id']; ?>, '<?php echo $row['user_name']; ?>', '<?php echo $row['meal_name']; ?>', '<?php echo $row['quantity']; ?>', '<?php echo $row['status']; ?>', '<?php echo $row['total']; ?>', '<?php echo $row['payment_method']; ?>', '<?php echo $row['created_at']; ?>')"><i class="fas fa-print"></i> Print</button>
+                                <button class="btn btn-sm btn-primary" onclick="printOrder(<?php echo $row['order_id']; ?>, '<?php echo $row['user_name']; ?>', '<?php echo $row['meal_name']; ?>', '<?php echo $row['quantity']; ?>', '<?php echo $row['status']; ?>', '<?php echo $row['total']; ?> MAD', '<?php echo $row['coupon_code']; ?>', '<?php echo $row['payment_method']; ?>', '<?php echo $row['created_at']; ?>')"><i class="fas fa-print"></i> Print</button>
                             </td>
                         </tr>
 
@@ -258,25 +368,33 @@ $result = $conn->query($sql);
                                             </div>
                                             <div class="form-group">
                                                 <label for="meal_id">Meal:</label>
-                                                <select class="form-control" id="meal_id" name="meal_id" required>
+                                                <select class="form-control" id="meal_id" name="meal_id" required onchange="calculateTotal()">
                                                     <?php
                                                     $mealsResult->data_seek(0); // Reset the pointer to the beginning
                                                     while ($meal = $mealsResult->fetch_assoc()): ?>
-                                                        <option value="<?php echo $meal['meal_id']; ?>" <?php if ($meal['meal_id'] == $row['meal_id']) echo 'selected'; ?>><?php echo $meal['name']; ?></option>
+                                                        <option value="<?php echo $meal['meal_id']; ?>" data-price="<?php echo $meal['price']; ?>" <?php if ($meal['meal_id'] == $row['meal_id']) echo 'selected'; ?>><?php echo $meal['name']; ?></option>
                                                     <?php endwhile; ?>
                                                 </select>
                                             </div>
                                             <div class="form-group">
                                                 <label for="quantity">Quantity:</label>
-                                                <input type="number" class="form-control" id="quantity" name="quantity" value="<?php echo $row['quantity']; ?>" required>
+                                                <input type="number" class="form-control" id="quantity" name="quantity" value="<?php echo $row['quantity']; ?>" required onchange="calculateTotal()">
                                             </div>
                                             <div class="form-group">
                                                 <label for="status">Status:</label>
-                                                <input type="text" class="form-control" id="status" name="status" value="<?php echo $row['status']; ?>" required>
+                                                <select class="form-control" id="status" name="status" required>
+                                                    <?php foreach ($orderStatuses as $orderStatus): ?>
+                                                        <option value="<?php echo $orderStatus; ?>" <?php if ($orderStatus == $row['status']) echo 'selected'; ?>><?php echo $orderStatus; ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
                                             </div>
                                             <div class="form-group">
-                                                <label for="total">Total:</label>
-                                                <input type="number" step="0.01" class="form-control" id="total" name="total" value="<?php echo $row['total']; ?>" required>
+                                                <label for="coupon_code">Coupon Code:</label>
+                                                <input type="text" class="form-control" id="coupon_code" name="coupon_code" value="<?php echo $row['coupon_code']; ?>" onchange="calculateTotal()">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="total">Total (MAD):</label>
+                                                <input type="number" step="0.01" class="form-control" id="total" name="total" value="<?php echo $row['total']; ?>" required readonly>
                                             </div>
                                             <div class="form-group">
                                                 <label for="payment_method">Payment Method:</label>
@@ -320,25 +438,33 @@ $result = $conn->query($sql);
                     </div>
                     <div class="form-group">
                         <label for="meal_id">Meal:</label>
-                        <select class="form-control" id="meal_id" name="meal_id" required>
+                        <select class="form-control" id="meal_id" name="meal_id" required onchange="calculateTotal()">
                             <?php
                             $mealsResult->data_seek(0); // Reset the pointer to the beginning
                             while ($meal = $mealsResult->fetch_assoc()): ?>
-                                <option value="<?php echo $meal['meal_id']; ?>"><?php echo $meal['name']; ?></option>
+                                <option value="<?php echo $meal['meal_id']; ?>" data-price="<?php echo $meal['price']; ?>"><?php echo $meal['name']; ?></option>
                             <?php endwhile; ?>
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="quantity">Quantity:</label>
-                        <input type="number" class="form-control" id="quantity" name="quantity" required>
+                        <input type="number" class="form-control" id="quantity" name="quantity" required onchange="calculateTotal()">
                     </div>
                     <div class="form-group">
                         <label for="status">Status:</label>
-                        <input type="text" class="form-control" id="status" name="status" required>
+                        <select class="form-control" id="status" name="status" required>
+                            <?php foreach ($orderStatuses as $orderStatus): ?>
+                                <option value="<?php echo $orderStatus; ?>"><?php echo $orderStatus; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="total">Total:</label>
-                        <input type="number" step="0.01" class="form-control" id="total" name="total" required>
+                        <label for="coupon_code">Coupon Code:</label>
+                        <input type="text" class="form-control" id="coupon_code" name="coupon_code" onchange="calculateTotal()">
+                    </div>
+                    <div class="form-group">
+                        <label for="total">Total (MAD):</label>
+                        <input type="number" step="0.01" class="form-control" id="total" name="total" required readonly>
                     </div>
                     <div class="form-group">
                         <label for="payment_method">Payment Method:</label>
@@ -351,7 +477,7 @@ $result = $conn->query($sql);
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
@@ -361,7 +487,7 @@ $result = $conn->query($sql);
         });
     });
 
-    function printOrder(orderId, userName, mealName, quantity, status, total, paymentMethod, createdAt) {
+    function printOrder(orderId, userName, mealName, quantity, status, total, couponCode, paymentMethod, createdAt) {
         // Open a new window for printing
         var printWindow = window.open('', '_blank');
         printWindow.document.write('<html><head><title>Print Order</title>');
@@ -375,12 +501,36 @@ $result = $conn->query($sql);
         printWindow.document.write('<p><strong>Quantity:</strong> ' + quantity + '</p>');
         printWindow.document.write('<p><strong>Status:</strong> ' + status + '</p>');
         printWindow.document.write('<p><strong>Total:</strong> ' + total + '</p>');
+        printWindow.document.write('<p><strong>Coupon Code:</strong> ' + couponCode + '</p>');
         printWindow.document.write('<p><strong>Payment Method:</strong> ' + paymentMethod + '</p>');
         printWindow.document.write('<p><strong>Created At:</strong> ' + createdAt + '</p>');
         printWindow.document.write('</div>');
         printWindow.document.write('</body></html>');
         printWindow.document.close();
         printWindow.print();
+    }
+
+    function calculateTotal() {
+        var mealSelect = document.getElementById('meal_id');
+        var quantity = document.getElementById('quantity').value;
+        var couponCode = document.getElementById('coupon_code').value;
+
+        if (!mealSelect || !quantity) return;
+
+        var mealPrice = mealSelect.options[mealSelect.selectedIndex].getAttribute('data-price');
+
+        $.ajax({
+            url: 'calculate_total.php',
+            type: 'POST',
+            data: {
+                meal_price: mealPrice,
+                quantity: quantity,
+                coupon_code: couponCode
+            },
+            success: function (response) {
+                document.getElementById('total').value = response.total;
+            }
+        });
     }
 </script>
 </body>

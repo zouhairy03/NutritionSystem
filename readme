@@ -1,19 +1,34 @@
-search for user etc 
+search for user etc (done)
 delivery part (done)
 quantity of the meals (stock,none ) ( done)
 update informations for the admin (done)
-take a look about all the pages 
-check the responsive design
-instaed of typing per month type per day 
+take a look about all the pages (done)
+**instaed of typing per month type per day (month is better)
 
 dont forget to fix that error tomorrow (
 Fatal error: Uncaught mysqli_sql_exception: Field 'category' doesn't have a default value in /Applications/MAMP/htdocs/nms/meals.php:41 Stack trace: #0 /Applications/MAMP/htdocs/nms/meals.php(41): mysqli->query('INSERT INTO mea...') #1 {main} thrown in /Applications/MAMP/htdocs/nms/meals.php on line 41 (done)
 
 
-do not hash the password
-add part of the coupon in payement also add csv for the payment 
-make only  side bar based oon the dashboard 
-add search button and filter for each page 
-add icons 
-fix the problems with the combination with the user and adress
-fix the problem with the delivery route it should be based on adress and informations of the user 
+do not hash the password (done)
+add part of the coupon in payement also add csv for the payment (done)
+make only  side bar based oon the dashboard (done)
+add search button and filter for each page (done)
+add icons (done)
+fix the problems with the combination with the user and adress (done)
+fix the problem with the delivery route it should be based on adress and informations of the user (this part wont works)
+use the currency MAD (done)
+
+link the payement with adress also the delivers (done)
+add the part of the coupon in the payment (done)
+add the part of the delivery in the payment (done)
+add the part of the quantity in the payment (done)
+add the part of the meal in the payment (done)
+add the part of the user in the payment (done)
+
+**check the responsive design 
+
+
+https://github.com/zouhairy03/NutritionSystem.git
+
+
+
