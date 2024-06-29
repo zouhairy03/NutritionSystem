@@ -21,7 +21,6 @@ if (isset($_POST['add_order'])) {
     $quantity = $_POST['quantity'];
     $status = $_POST['status'];
     $coupon_code = $_POST['coupon_code'];
-    $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
     // Start transaction
@@ -44,7 +43,7 @@ if (isset($_POST['add_order'])) {
         $total = $mealPrice * $quantity * ((100 - $discount) / 100);
 
         // Insert order
-        $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, coupon_id, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', (SELECT coupon_id FROM coupons WHERE code='$coupon_code'), NOW(), NOW())";
+        $sql = "INSERT INTO orders (user_id, meal_id, quantity, status, total, payment_method, coupon_id, created_at, updated_at) VALUES ('$user_id', '$meal_id', '$quantity', '$status', '$total', '$payment_method', (SELECT coupon_id FROM coupons WHERE code='$coupon_code'), NOW(), NOW()) ";
         $conn->query($sql);
 
         // Update stock
@@ -70,7 +69,6 @@ if (isset($_POST['edit_order'])) {
     $quantity = $_POST['quantity'];
     $status = $_POST['status'];
     $coupon_code = $_POST['coupon_code'];
-    $total = $_POST['total'];
     $payment_method = 'Cash on Delivery';
 
     // Get coupon discount if applicable
@@ -118,7 +116,26 @@ if (isset($_GET['delete_order'])) {
 }
 
 // Fetch orders data
-$sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name, coupons.code as coupon_code FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id";
+$search = $_GET['search'] ?? '';
+$filter = $_GET['filter'] ?? '';
+$filter_condition = '';
+
+if (!empty($search) && !empty($filter)) {
+    if ($filter == 'user_name') {
+        $filter_condition = "WHERE users.name LIKE '%$search%'";
+    } elseif ($filter == 'meal_name') {
+        $filter_condition = "WHERE meals.name LIKE '%$search%'";
+    } elseif ($filter == 'status') {
+        $filter_condition = "WHERE orders.status LIKE '%$search%'";
+    }
+}
+
+$sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name, coupons.code as coupon_code 
+        FROM orders 
+        LEFT JOIN users ON orders.user_id = users.user_id 
+        LEFT JOIN meals ON orders.meal_id = meals.meal_id 
+        LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id 
+        $filter_condition";
 $result = $conn->query($sql);
 
 // Handle Excel download
@@ -127,7 +144,7 @@ if (isset($_GET['download'])) {
     header("Content-Disposition: attachment; filename=orders.xls");
     $output = fopen("php://output", "w");
     fputcsv($output, array('Order ID', 'User Name', 'Meal Name', 'Quantity', 'Status', 'Total (MAD)', 'Coupon Code', 'Payment Method', 'Created At'), "\t");
-    $download_sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name, coupons.code as coupon_code FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id";
+    $download_sql = "SELECT orders.*, users.name as user_name, meals.name as meal_name, coupons.code as coupon_code FROM orders LEFT JOIN users ON orders.user_id = users.user_id LEFT JOIN meals ON orders.meal_id = meals.meal_id LEFT JOIN coupons ON orders.coupon_id = coupons.coupon_id $filter_condition";
     $download_result = $conn->query($download_sql);
     while ($row = $download_result->fetch_assoc()) {
         fputcsv($output, $row, "\t");
@@ -158,7 +175,7 @@ if (isset($_GET['download'])) {
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background:  #809B53 ; /* Green color */
+            background:  #809B53 ;
             color: #fff;
             transition: all 0.3s;
         }
@@ -167,7 +184,7 @@ if (isset($_GET['download'])) {
         }
         #sidebar .sidebar-header {
             padding: 20px;
-            background:    #809B53 ; /* Green color */
+            background:  #809B53 ;
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -183,7 +200,7 @@ if (isset($_GET['download'])) {
             color: #fff;
         }
         #sidebar ul li a:hover {
-            color: #3E8E41; /* Green color */
+            color: #3E8E41;
             background: #fff;
         }
         #content {
@@ -201,7 +218,7 @@ if (isset($_GET['download'])) {
             font-size: 2em;
         }
         #sidebarCollapse {
-            background: #3E8E41; /* Green color */
+            background: #3E8E41;
             border: none;
             color: #fff;
             padding: 10px;
@@ -214,7 +231,6 @@ if (isset($_GET['download'])) {
             margin-bottom: 20px;
         }
         .navbar {
-            /* background: #3E8E41; Green color */
             color: #fff;
         }
         .navbar .navbar-brand {
@@ -240,25 +256,26 @@ if (isset($_GET['download'])) {
         <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
-            <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
-            <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
-            <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
-            <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
-            <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
-            <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
-            <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
-            <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
-            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
-            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
-            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
-            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
-            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
-            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
-            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
+    <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+    <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+    <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+    <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+    <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+    <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+    <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+    <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+    <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+    <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+    <li><a href="send_delivery_notifications.php"><i class="fas fa-bell"></i> Delivery Notifications</a></li> <!-- Added for delivery notifications -->
+    <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+    <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+    <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+    <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+    <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+    <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+    <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
+    <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+</ul>
     </nav>
 
     <!-- Page Content -->
@@ -270,7 +287,7 @@ if (isset($_GET['download'])) {
                     <span></span>
                 </button>
                 <div class="ml-auto">
-                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 400px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
                 </div>
             </div>
         </nav>
@@ -290,9 +307,9 @@ if (isset($_GET['download'])) {
                     </div>
                     <div class="form-group mx-sm-3 mb-2">
                         <select name="filter" class="form-control">
-                            <option value="user_name" <?php if ($_GET['filter'] ?? '' == 'user_name') echo 'selected'; ?>>User Name</option>
-                            <option value="meal_name" <?php if ($_GET['filter'] ?? '' == 'meal_name') echo 'selected'; ?>>Meal Name</option>
-                            <option value="status" <?php if ($_GET['filter'] ?? '' == 'status') echo 'selected'; ?>>Status</option>
+                            <option value="users.name" <?php if ($_GET['filter'] ?? '' == 'users.name') echo 'selected'; ?>>User Name</option>
+                            <option value="meals.name" <?php if ($_GET['filter'] ?? '' == 'meals.name') echo 'selected'; ?>>Meal Name</option>
+                            <option value="orders.status" <?php if ($_GET['filter'] ?? '' == 'orders.status') echo 'selected'; ?>>Status</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search"></i> Search</button>

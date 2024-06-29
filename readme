@@ -32,3 +32,22 @@ https://github.com/zouhairy03/NutritionSystem.git
 
 good luck
 
+we forget to display the user malady on the admin type of it 
+add notification for the admin that he receives a new information when he got logged in
+display the category when you order and the type of the malady 
+use the table hover 
+
+the problems is for the category_id on the meal  table 
+problem for the user when he orders with coupon 
+ptoblem with order history on the user for example if he looged in with login password with the admin who build that it appears adress N/A on the button download invoice 
+also when the user do his own order  with the coupon code it appears that 	
+Deprecated: htmlspecialchars(): Passing null to parameter #1 ($string) of type string is deprecated in /Applications/MAMP/htdocs/nms/user_order_history.php on line 208  until the admin reply the coupon code
+
+
+         ALL THE PROBLEMS FIXED  EXCEPT THE LAST 
+
+
+good just I wanna add alerts on the sidebar on form of numbers to see how many notifications i got 
+image for the deliver and  user       
+
+all is done 

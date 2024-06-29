@@ -15,23 +15,32 @@ if (isset($_POST['add_notification'])) {
     $message = $_POST['message'];
     $user_ids = $_POST['user_ids']; // Array of selected user IDs
 
-    $sql = "INSERT INTO notifications (title, message, status, created_at, updated_at) VALUES ('$title', '$message', 'unread', NOW(), NOW())";
-    $conn->query($sql);
-    $notification_id = $conn->insert_id; // Get the last inserted ID
+    $sql = "INSERT INTO notifications (title, message, status, created_at, updated_at) VALUES (?, ?, 'unread', NOW(), NOW())";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ss", $title, $message);
+    $stmt->execute();
+    $notification_id = $stmt->insert_id; // Get the last inserted ID
 
     foreach ($user_ids as $user_id) {
-        $conn->query("INSERT INTO user_notifications (user_id, notification_id) VALUES ('$user_id', '$notification_id')");
+        $stmt = $conn->prepare("INSERT INTO user_notifications (user_id, notification_id) VALUES (?, ?)");
+        $stmt->bind_param("ii", $user_id, $notification_id);
+        $stmt->execute();
     }
 
     // Simulate sending email notifications
     foreach ($user_ids as $user_id) {
-        $user = $conn->query("SELECT email FROM users WHERE user_id = '$user_id'")->fetch_assoc();
+        $stmt = $conn->prepare("SELECT email FROM users WHERE user_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
         $email = $user['email'];
         // Simulate sending email
         mail($email, $title, $message);
     }
 
     header("Location: notifications.php");
+    exit();
 }
 
 // Handle Edit Notification
@@ -40,9 +49,12 @@ if (isset($_POST['edit_notification'])) {
     $title = $_POST['title'];
     $message = $_POST['message'];
 
-    $sql = "UPDATE notifications SET title='$title', message='$message', updated_at=NOW() WHERE notification_id='$notification_id'";
-    $conn->query($sql);
+    $sql = "UPDATE notifications SET title = ?, message = ?, updated_at = NOW() WHERE notification_id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssi", $title, $message, $notification_id);
+    $stmt->execute();
     header("Location: notifications.php");
+    exit();
 }
 
 // Handle Delete Notification
@@ -51,34 +63,46 @@ if (isset($_GET['delete_notification'])) {
     $notification_id = $_GET['delete_notification'];
 
     // Check for related user notifications
-    $related_user_notifications_query = "SELECT COUNT(*) AS count FROM user_notifications WHERE notification_id='$notification_id'";
-    $related_user_notifications_result = $conn->query($related_user_notifications_query);
-    $related_user_notifications_count = $related_user_notifications_result->fetch_assoc()['count'];
+    $related_user_notifications_query = "SELECT COUNT(*) AS count FROM user_notifications WHERE notification_id = ?";
+    $stmt = $conn->prepare($related_user_notifications_query);
+    $stmt->bind_param("i", $notification_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $related_user_notifications_count = $result->fetch_assoc()['count'];
 
     if ($related_user_notifications_count > 0) {
         $delete_error = "Cannot delete notification. There are users associated with this notification.";
     } else {
-        $conn->query("DELETE FROM user_notifications WHERE notification_id='$notification_id'");
-        $sql = "DELETE FROM notifications WHERE notification_id='$notification_id'";
-        $conn->query($sql);
+        $stmt = $conn->prepare("DELETE FROM user_notifications WHERE notification_id = ?");
+        $stmt->bind_param("i", $notification_id);
+        $stmt->execute();
+
+        $stmt = $conn->prepare("DELETE FROM notifications WHERE notification_id = ?");
+        $stmt->bind_param("i", $notification_id);
+        $stmt->execute();
         header("Location: notifications.php");
+        exit();
     }
 }
 
 // Handle Mark as Read
 if (isset($_GET['mark_as_read'])) {
     $notification_id = $_GET['mark_as_read'];
-    $sql = "UPDATE notifications SET status='read' WHERE notification_id='$notification_id'";
-    $conn->query($sql);
+    $stmt = $conn->prepare("UPDATE notifications SET status = 'read' WHERE notification_id = ?");
+    $stmt->bind_param("i", $notification_id);
+    $stmt->execute();
     header("Location: notifications.php");
+    exit();
 }
 
 // Handle Mark as Unread
 if (isset($_GET['mark_as_unread'])) {
     $notification_id = $_GET['mark_as_unread'];
-    $sql = "UPDATE notifications SET status='unread' WHERE notification_id='$notification_id'";
-    $conn->query($sql);
+    $stmt = $conn->prepare("UPDATE notifications SET status = 'unread' WHERE notification_id = ?");
+    $stmt->bind_param("i", $notification_id);
+    $stmt->execute();
     header("Location: notifications.php");
+    exit();
 }
 
 // Handle Search and Filter
@@ -91,16 +115,43 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $start = ($page - 1) * $limit;
 
 // Fetch notifications data with pagination and status filter
-$search_sql = $search_query ? "WHERE (title LIKE '%$search_query%' OR message LIKE '%$search_query%')" : "WHERE 1";
-$status_sql = $status_filter ? "AND status='$status_filter'" : "";
-$sql = "SELECT * FROM notifications $search_sql $status_sql LIMIT $start, $limit";
-$result = $conn->query($sql);
+$search_sql = $search_query ? "AND (title LIKE ? OR message LIKE ?)" : "";
+$status_sql = $status_filter ? "AND status = ?" : "";
+$sql = "SELECT * FROM notifications WHERE 1=1 $search_sql $status_sql LIMIT ?, ?";
+$stmt = $conn->prepare($sql);
+
+if ($search_query && $status_filter) {
+    $search_param = "%{$search_query}%";
+    $stmt->bind_param("ssssi", $search_param, $search_param, $status_filter, $start, $limit);
+} elseif ($search_query) {
+    $search_param = "%{$search_query}%";
+    $stmt->bind_param("ssii", $search_param, $search_param, $start, $limit);
+} elseif ($status_filter) {
+    $stmt->bind_param("sii", $status_filter, $start, $limit);
+} else {
+    $stmt->bind_param("ii", $start, $limit);
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
 
 // Fetch total notifications count for pagination
-$sql_count = "SELECT COUNT(*) AS total FROM notifications $search_sql $status_sql";
-$count_result = $conn->query($sql_count);
+$sql_count = "SELECT COUNT(*) AS total FROM notifications WHERE 1=1 $search_sql $status_sql";
+$stmt = $conn->prepare($sql_count);
+
+if ($search_query && $status_filter) {
+    $stmt->bind_param("sss", $search_param, $search_param, $status_filter);
+} elseif ($search_query) {
+    $stmt->bind_param("ss", $search_param, $search_param);
+} elseif ($status_filter) {
+    $stmt->bind_param("s", $status_filter);
+}
+
+$stmt->execute();
+$count_result = $stmt->get_result();
 $total_notifications = $count_result->fetch_assoc()['total'];
 $total_pages = ceil($total_notifications / $limit);
+
 ?>
 
 <!DOCTYPE html>
@@ -235,7 +286,7 @@ $total_pages = ceil($total_notifications / $limit);
                     <span></span>
                 </button>
                 <div class="ml-auto">
-                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 400px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
                 </div>
             </div>
         </nav>

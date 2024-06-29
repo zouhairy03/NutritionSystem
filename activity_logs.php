@@ -139,7 +139,7 @@ $usersQuery = $conn->query("SELECT user_id, name FROM users");
                     <span></span>
                 </button>
                 <div class="ml-auto">
-                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 400px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
                 </div>
             </div>
         </nav>

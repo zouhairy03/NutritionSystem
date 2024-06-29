@@ -11,9 +11,10 @@ if (isset($_POST['add_user'])) {
     $name = $_POST['name'];
     $email = $_POST['email'];
     $phone = $_POST['phone'];
+    $malady_id = $_POST['malady_id'];
     $password = $_POST['password'];
 
-    $sql = "INSERT INTO users (name, email, phone, password, created_at, updated_at) VALUES ('$name', '$email', '$phone', '$password', NOW(), NOW())";
+    $sql = "INSERT INTO users (name, email, phone, malady_id, password, created_at, updated_at) VALUES ('$name', '$email', '$phone', '$malady_id', '$password', NOW(), NOW())";
     $conn->query($sql);
     header("Location: users.php");
     exit();
@@ -25,8 +26,9 @@ if (isset($_POST['edit_user'])) {
     $name = $_POST['name'];
     $email = $_POST['email'];
     $phone = $_POST['phone'];
+    $malady_id = $_POST['malady_id'];
 
-    $sql = "UPDATE users SET name='$name', email='$email', phone='$phone', updated_at=NOW() WHERE user_id='$user_id'";
+    $sql = "UPDATE users SET name='$name', email='$email', phone='$phone', malady_id='$malady_id', updated_at=NOW() WHERE user_id='$user_id'";
     $conn->query($sql);
     header("Location: users.php");
     exit();
@@ -61,9 +63,13 @@ if (isset($_POST['confirm_delete_user'])) {
 
 // Fetch users data
 $search = $_GET['search'] ?? '';
-$filter = $_GET['filter'] ?? 'name';
-$sql = "SELECT * FROM users WHERE $filter LIKE '%$search%'";
+$filter = $_GET['filter'] ?? 'users.name';
+$sql = "SELECT users.*, maladies.name AS malady_name FROM users LEFT JOIN maladies ON users.malady_id = maladies.malady_id WHERE $filter LIKE '%$search%'";
 $result = $conn->query($sql);
+
+// Fetch maladies data for the dropdown
+$maladies_query = "SELECT * FROM maladies";
+$maladies_result = $conn->query($maladies_query);
 
 // Handle Excel download
 if (isset($_GET['download'])) {
@@ -71,8 +77,8 @@ if (isset($_GET['download'])) {
     header("Content-Disposition: attachment; filename=users.xls");
     $output = fopen("php://output", "w");
     // Use tab delimiter instead of comma
-    fputcsv($output, array('User ID', 'Name', 'Email', 'Phone', 'Created At', 'Updated At'), "\t");
-    $download_sql = "SELECT * FROM users";
+    fputcsv($output, array('User ID', 'Name', 'Email', 'Phone', 'Malady', 'Created At', 'Updated At'), "\t");
+    $download_sql = "SELECT users.user_id, users.name, users.email, users.phone, maladies.name AS malady_name, users.created_at, users.updated_at FROM users LEFT JOIN maladies ON users.malady_id = maladies.malady_id";
     $download_result = $conn->query($download_sql);
     while ($row = $download_result->fetch_assoc()) {
         fputcsv($output, $row, "\t");
@@ -103,11 +109,7 @@ if (isset($_GET['download'])) {
         #sidebar {
             min-width: 250px;
             max-width: 250px;
-            background:        #809B53  ; /* Green color */
-            /* #497626 */
-            /* #7CC644 */
-            /* #39B54A */
-            /* #809B53 */
+            background: #809B53; /* Green color */
             color: #fff;
             transition: all 0.3s;
         }
@@ -116,7 +118,6 @@ if (isset($_GET['download'])) {
         }
         #sidebar .sidebar-header {
             padding: 20px;
-
         }
         #sidebar ul.components {
             padding: 20px 0;
@@ -163,7 +164,6 @@ if (isset($_GET['download'])) {
             margin-bottom: 20px;
         }
         .navbar {
-
             color: #fff;
         }
         .navbar .navbar-brand {
@@ -186,40 +186,41 @@ if (isset($_GET['download'])) {
     <!-- Sidebar -->
     <nav id="sidebar">
         <div class="sidebar-header">
-        <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
+            <h3><i class="fas fa-user-shield"></i> Admin Dashboard</h3>
         </div>
         <ul class="list-unstyled components">
-            <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
-            <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
-            <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
-            <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
-            <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
-            <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
-            <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
-            <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
-            <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
-            <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
-            <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
-            <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
-            <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
-            <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
-            <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
-            <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
-            <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        </ul>
+    <li><a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+    <li><a href="users.php"><i class="fas fa-users"></i> Users</a></li>
+    <li><a href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a></li>
+    <li><a href="coupons.php"><i class="fas fa-tags"></i> Coupons</a></li>
+    <li><a href="maladies.php"><i class="fas fa-notes-medical"></i> Maladies</a></li>
+    <li><a href="notifications.php"><i class="fas fa-bell"></i> Notifications</a></li>
+    <li><a href="meals.php"><i class="fas fa-utensils"></i> Meals</a></li>
+    <li><a href="payments.php"><i class="fas fa-dollar-sign"></i> Payments</a></li>
+    <li><a href="deliveries.php"><i class="fas fa-truck"></i> Deliveries</a></li>
+    <li><a href="delivers.php"><i class="fas fa-user-shield"></i> Delivery Personnel</a></li>
+    <li><a href="send_delivery_notifications.php"><i class="fas fa-bell"></i> Delivery Notifications</a></li> <!-- Added for delivery notifications -->
+    <li><a href="reports.php"><i class="fas fa-chart-pie"></i> Reports</a></li>
+    <li><a href="settings.php"><i class="fas fa-cogs"></i> Settings</a></li>
+    <li><a href="support_tickets.php"><i class="fas fa-ticket-alt"></i> Support Tickets</a></li>
+    <li><a href="feedback.php"><i class="fas fa-comments"></i> User Feedback</a></li>
+    <li><a href="inventory.php"><i class="fas fa-boxes"></i> Inventory</a></li>
+    <li><a href="activity_logs.php"><i class="fas fa-list"></i> Activity Logs</a></li>
+    <li><a href="financial_overview.php"><i class="fas fa-dollar-sign"></i> Financial Overview</a></li>
+    <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+</ul>
     </nav>
 
     <!-- Page Content -->
     <div id="content">
-        <nav class="navbar navbar-expand-lg" >
+        <nav class="navbar navbar-expand-lg">
             <div class="container-fluid">
                 <button type="button" id="sidebarCollapse" class="btn btn-info">
                     <i class="fas fa-align-left"></i>
                     <span></span>
                 </button>
                 <div class="ml-auto">
-                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 230px;height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
+                    <img src="Green_And_White_Aesthetic_Salad_Vegan_Logo__6_-removebg-preview.png" style="margin-right: 400px; height: 250px; width: 60%;" alt="NutriDaily Logo" class="logo">
                 </div>
             </div>
         </nav>
@@ -239,9 +240,10 @@ if (isset($_GET['download'])) {
                     </div>
                     <div class="form-group mx-sm-3 mb-2">
                         <select name="filter" class="form-control">
-                            <option value="name" <?php if ($filter == 'name') echo 'selected'; ?>>Name</option>
-                            <option value="email" <?php if ($filter == 'email') echo 'selected'; ?>>Email</option>
-                            <option value="phone" <?php if ($filter == 'phone') echo 'selected'; ?>>Phone</option>
+                            <option value="users.name" <?php if ($filter == 'users.name') echo 'selected'; ?>>Name</option>
+                            <option value="users.email" <?php if ($filter == 'users.email') echo 'selected'; ?>>Email</option>
+                            <option value="users.phone" <?php if ($filter == 'users.phone') echo 'selected'; ?>>Phone</option>
+                            <option value="maladies.name" <?php if ($filter == 'maladies.name') echo 'selected'; ?>>Malady</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary mb-2"><i class="fas fa-search"></i> Search</button>
@@ -260,6 +262,7 @@ if (isset($_GET['download'])) {
                         <th>Name</th>
                         <th>Email</th>
                         <th>Phone</th>
+                        <th>Malady</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -270,6 +273,7 @@ if (isset($_GET['download'])) {
                             <td><?php echo $row['name']; ?></td>
                             <td><?php echo $row['email']; ?></td>
                             <td><?php echo $row['phone']; ?></td>
+                            <td><?php echo $row['malady_name']; ?></td>
                             <td>
                                 <!-- Edit User Button -->
                                 <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editUserModal<?php echo $row['user_id']; ?>"><i class="fas fa-edit"></i> Edit</button>
@@ -303,6 +307,17 @@ if (isset($_GET['download'])) {
                                             <div class="form-group">
                                                 <label for="phone">Phone:</label>
                                                 <input type="text" class="form-control" id="phone" name="phone" value="<?php echo $row['phone']; ?>" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="malady_id">Malady:</label>
+                                                <select class="form-control" id="malady_id" name="malady_id" required>
+                                                    <?php 
+                                                    // Reset the result pointer and fetch maladies again
+                                                    $maladies_result->data_seek(0);
+                                                    while ($malady = $maladies_result->fetch_assoc()): ?>
+                                                        <option value="<?php echo $malady['malady_id']; ?>" <?php if ($row['malady_id'] == $malady['malady_id']) echo 'selected'; ?>><?php echo $malady['name']; ?></option>
+                                                    <?php endwhile; ?>
+                                                </select>
                                             </div>
                                             <button type="submit" class="btn btn-primary" name="edit_user"><i class="fas fa-save"></i> Save changes</button>
                                         </form>
@@ -341,6 +356,17 @@ if (isset($_GET['download'])) {
                     <div class="form-group">
                         <label for="phone">Phone:</label>
                         <input type="text" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="malady_id">Malady:</label>
+                        <select class="form-control" id="malady_id" name="malady_id" required>
+                            <?php 
+                            // Reset the result pointer and fetch maladies again
+                            $maladies_result->data_seek(0);
+                            while ($malady = $maladies_result->fetch_assoc()): ?>
+                                <option value="<?php echo $malady['malady_id']; ?>"><?php echo $malady['name']; ?></option>
+                            <?php endwhile; ?>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="password">Password:</label>
